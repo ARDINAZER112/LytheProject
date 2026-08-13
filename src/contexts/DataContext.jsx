@@ -1,9 +1,22 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
-import { logActivity, fetchUserLogs } from '../lib/activityLogger';
+import { logActivity, fetchUserLogs, getClientIpAndLocation } from '../lib/activityLogger';
 
 const DataContext = createContext();
+
+export const getVisitorDeviceId = () => {
+  try {
+    let devId = localStorage.getItem('jaringlokal_visitor_device_id');
+    if (!devId) {
+      devId = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+      localStorage.setItem('jaringlokal_visitor_device_id', devId);
+    }
+    return devId;
+  } catch {
+    return 'dev_default';
+  }
+};
 
 const initialStores = [
   {
@@ -85,6 +98,7 @@ export const DataProvider = ({ children }) => {
   const [stores, setStores]     = useState([]);
   const [orders, setOrders]     = useState([]);
   const [cart, setCart]         = useState([]);
+  const [tickets, setTickets]   = useState([]);
   const [userLogs, setUserLogs] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [visitorCount, setVisitorCount] = useState(() => {
@@ -96,6 +110,85 @@ export const DataProvider = ({ children }) => {
   const loadLogs = async () => {
     const logsData = await fetchUserLogs();
     setUserLogs(logsData);
+  };
+
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // Process automatic updates for support tickets with no activity for 1 week (7 days)
+  const processAutoUpdateInactiveTickets = async (ticketList) => {
+    if (!Array.isArray(ticketList) || ticketList.length === 0) return ticketList;
+    
+    const now = Date.now();
+    let hasChanges = false;
+
+    const updatedList = await Promise.all(ticketList.map(async (ticket) => {
+      const lastActivity = new Date(ticket.updated_at || ticket.created_at || now).getTime();
+      const isInactiveOneWeek = (now - lastActivity) >= ONE_WEEK_MS;
+      const isOpen = ticket.status === 'Terbuka' || ticket.status === 'Sedang Diproses';
+
+      if (isOpen && isInactiveOneWeek) {
+        hasChanges = true;
+        const autoReply = 'Otomasisasi Sistem: Tiket ditutup secara otomatis karena tidak ada aktivitas selama 1 minggu.';
+        const currentMsgs = Array.isArray(ticket.messages) ? ticket.messages : [];
+        const newMsgs = [...currentMsgs, {
+          id: Date.now(),
+          sender: 'admin',
+          senderName: 'Otomasisasi Sistem',
+          text: autoReply,
+          created_at: new Date().toISOString()
+        }];
+
+        const updatedTicket = {
+          ...ticket,
+          status: 'Selesai',
+          admin_reply: autoReply,
+          messages: newMsgs,
+          updated_at: new Date().toISOString()
+        };
+
+        // Persist SQL update in database
+        try {
+          await supabase.from('support_tickets').update({
+            status: 'Selesai',
+            admin_reply: autoReply,
+            messages: newMsgs,
+            updated_at: new Date().toISOString()
+          }).eq('id', ticket.id);
+        } catch (e) {
+          console.error('Failed to auto update inactive ticket in Supabase:', e);
+        }
+
+        return updatedTicket;
+      }
+      return ticket;
+    }));
+
+    if (hasChanges) {
+      localStorage.setItem('jaringlokal_tickets', JSON.stringify(updatedList));
+    }
+
+    return updatedList;
+  };
+
+  // Load Support Tickets from Supabase with 1-week inactivity auto-update
+  const loadTickets = async () => {
+    try {
+      const { data, error } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
+      if (!error && Array.isArray(data)) {
+        const processed = await processAutoUpdateInactiveTickets(data);
+        setTickets(processed);
+        localStorage.setItem('jaringlokal_tickets', JSON.stringify(processed));
+      } else {
+        const saved = localStorage.getItem('jaringlokal_tickets');
+        const parsed = saved ? JSON.parse(saved) : [];
+        const processed = await processAutoUpdateInactiveTickets(parsed);
+        setTickets(processed);
+      }
+    } catch {
+      const saved = localStorage.getItem('jaringlokal_tickets');
+      const parsed = saved ? JSON.parse(saved) : [];
+      setTickets(parsed);
+    }
   };
 
   // Load Stores from Supabase
@@ -162,7 +255,7 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      await Promise.allSettled([loadStores(), loadProducts(), loadOrders(), loadLogs()]);
+      await Promise.allSettled([loadStores(), loadProducts(), loadOrders(), loadLogs(), loadTickets()]);
       setTimeout(() => {
         setLoading(false);
       }, 700);
@@ -219,12 +312,33 @@ export const DataProvider = ({ children }) => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_logs' }, (payload) => {
         setUserLogs(prev => [payload.new, ...prev]);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setTickets(prev => [payload.new, ...prev.filter(t => t.id !== payload.new.id)]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+        } else if (payload.eventType === 'DELETE') {
+          setTickets(prev => prev.filter(t => t.id !== payload.old.id));
+        }
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // ── Sync user role when store status changes to approved/rejected ──
+  useEffect(() => {
+    if (user && user.role !== 'admin' && stores.length > 0) {
+      const myStore = stores.find(s => String(s.user_id) === String(user.id));
+      if (myStore?.status === 'approved' && user.role !== 'seller') {
+        updateUserRole('seller');
+      } else if ((!myStore || myStore.status !== 'approved') && user.role === 'seller') {
+        updateUserRole('customer');
+      }
+    }
+  }, [user?.id, user?.role, stores]);
 
   // ── Store Registration & Management ────────────────────────
   const registerStore = async (storeDetails) => {
@@ -236,7 +350,7 @@ export const DataProvider = ({ children }) => {
       description: storeDetails.description || '',
       address: storeDetails.address || '',
       phone: storeDetails.phone || '',
-      status: 'approved', // Auto-approve upon registration to grant seller status
+      status: 'pending', // Pending admin manual approval in database
     };
 
     // Optimistic UI update
@@ -255,10 +369,25 @@ export const DataProvider = ({ children }) => {
       console.error('Failed to insert store to Supabase:', err);
     }
 
-    // Automatically update user role to seller!
-    await updateUserRole('seller');
-
     return { success: true, store: tempStore };
+  };
+
+  const updateStoreStatus = async (storeId, newStatus) => {
+    const updatedStores = stores.map(s => s.id === storeId ? { ...s, status: newStatus } : s);
+    setStores(updatedStores);
+    localStorage.setItem('jaringlokal_stores', JSON.stringify(updatedStores));
+
+    const targetStore = stores.find(s => s.id === storeId);
+
+    try {
+      await supabase.from('stores').update({ status: newStatus }).eq('id', storeId);
+      if (targetStore?.user_id) {
+        const newRole = newStatus === 'approved' ? 'seller' : 'customer';
+        await supabase.from('users').update({ role: newRole }).eq('id', targetStore.user_id);
+      }
+    } catch (err) {
+      console.error('Failed to update store status in Supabase:', err);
+    }
   };
 
   // Helper to get current user's store
@@ -436,13 +565,165 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // ── Support Ticket Operations ──────────────────────────────
+  const createTicket = async (ticketData) => {
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    const createdAt = new Date().toISOString();
+    const initialMessage = ticketData.message || '';
+    const visitorDevId = getVisitorDeviceId();
+    const geoInfo = await getClientIpAndLocation().catch(() => ({ ip_address: '180.252.124.58' }));
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    
+    const newTicket = {
+      ticket_code: `TCK-${randomNum}`,
+      name: ticketData.name || 'Pengunjung',
+      email: ticketData.email || 'user@jaringlokal.com',
+      phone: ticketData.phone || '',
+      category: ticketData.category || 'Pertanyaan Umum',
+      subject: ticketData.subject || 'Bantuan Layanan',
+      message: initialMessage,
+      messages: [
+        {
+          id: Date.now(),
+          sender: 'visitor',
+          senderName: ticketData.name || 'Pengunjung',
+          text: initialMessage,
+          created_at: createdAt,
+        }
+      ],
+      status: 'Terbuka',
+      admin_reply: null,
+      ip_address: geoInfo.ip_address || '180.252.124.58',
+      user_agent: userAgent,
+      visitor_device_id: visitorDevId,
+      created_at: createdAt,
+      updated_at: createdAt,
+    };
+
+    // Save ticket code and email into persistent localStorage tracking
+    try {
+      const existingCodesRaw = localStorage.getItem('jaringlokal_my_ticket_codes');
+      const existingCodes = existingCodesRaw ? JSON.parse(existingCodesRaw) : [];
+      if (!existingCodes.includes(newTicket.ticket_code)) {
+        localStorage.setItem('jaringlokal_my_ticket_codes', JSON.stringify([newTicket.ticket_code, ...existingCodes]));
+      }
+      if (ticketData.email) {
+        localStorage.setItem('jaringlokal_last_visitor_email', ticketData.email);
+      }
+    } catch (e) {
+      console.warn('Failed to update local ticket codes tracking:', e);
+    }
+
+    const tempTicket = { ...newTicket, id: Date.now() };
+    const updated = [tempTicket, ...tickets];
+    setTickets(updated);
+    localStorage.setItem('jaringlokal_tickets', JSON.stringify(updated));
+
+    try {
+      const { data, error } = await supabase.from('support_tickets').insert([newTicket]).select().single();
+      if (!error && data) {
+        tempTicket.id = data.id;
+        loadTickets();
+      }
+    } catch (err) {
+      console.error('Failed to create support ticket in Supabase:', err);
+    }
+
+    return { success: true, ticket: tempTicket };
+  };
+
+  const updateTicketStatus = async (ticketId, status, adminReply = null) => {
+    const updated = tickets.map(t => {
+      if (t.id === ticketId) {
+        const newMessages = Array.isArray(t.messages) ? [...t.messages] : (t.message ? [{ id: 1, sender: 'visitor', senderName: t.name, text: t.message, created_at: t.created_at }] : []);
+        if (adminReply !== null && adminReply.trim() !== '') {
+          newMessages.push({
+            id: Date.now(),
+            sender: 'admin',
+            senderName: 'Tim Dukungan Admin',
+            text: adminReply,
+            created_at: new Date().toISOString()
+          });
+        }
+        return { 
+          ...t, 
+          status, 
+          admin_reply: adminReply !== null ? adminReply : t.admin_reply,
+          messages: newMessages,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+    setTickets(updated);
+    localStorage.setItem('jaringlokal_tickets', JSON.stringify(updated));
+
+    try {
+      const target = updated.find(t => t.id === ticketId);
+      const updatePayload = { 
+        status, 
+        updated_at: new Date().toISOString() 
+      };
+      if (target) {
+        if (target.admin_reply !== undefined) updatePayload.admin_reply = target.admin_reply;
+        if (target.messages !== undefined) updatePayload.messages = target.messages;
+      }
+      await supabase.from('support_tickets').update(updatePayload).eq('id', ticketId);
+    } catch (err) {
+      console.error('Failed to update ticket status in Supabase:', err);
+    }
+  };
+
+  const addTicketMessage = async (ticketId, messageObj) => {
+    const updated = tickets.map(t => {
+      if (t.id === ticketId) {
+        const currentMessages = Array.isArray(t.messages) && t.messages.length > 0
+          ? [...t.messages]
+          : [{ id: 1, sender: 'visitor', senderName: t.name || 'Pengunjung', text: t.message || '', created_at: t.created_at || new Date().toISOString() }];
+        
+        const newMsgList = [...currentMessages, {
+          id: Date.now(),
+          sender: messageObj.sender || 'visitor',
+          senderName: messageObj.senderName || 'Pengunjung',
+          text: messageObj.text || '',
+          created_at: new Date().toISOString()
+        }];
+
+        return {
+          ...t,
+          messages: newMsgList,
+          admin_reply: messageObj.sender === 'admin' ? messageObj.text : t.admin_reply,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+
+    setTickets(updated);
+    localStorage.setItem('jaringlokal_tickets', JSON.stringify(updated));
+
+    try {
+      const target = updated.find(t => t.id === ticketId);
+      if (target) {
+        await supabase.from('support_tickets').update({
+          messages: target.messages,
+          admin_reply: target.admin_reply,
+          updated_at: new Date().toISOString()
+        }).eq('id', ticketId);
+      }
+    } catch (err) {
+      console.error('Failed to add message to ticket in Supabase:', err);
+    }
+  };
+
   return (
     <DataContext.Provider value={{
       loading,
       products, addProduct, updateProduct, deleteProduct,
-      stores, registerStore, getStoreForUser,
+      stores, registerStore, updateStoreStatus, getStoreForUser,
       cart, addToCart, updateCartQuantity, removeFromCart, clearCart,
       orders, checkout, updateOrderStatus,
+      tickets, createTicket, updateTicketStatus, addTicketMessage, loadTickets,
       userLogs, loadLogs,
       visitorCount,
     }}>

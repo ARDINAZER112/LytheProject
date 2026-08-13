@@ -6,10 +6,12 @@ import { Ship, ShoppingCart, User as UserIcon, LogOut, Menu, X, LayoutDashboard,
 
 export function UserLayout() {
   const { user, logout } = useAuth();
-  const { cart } = useData();
+  const { cart, getStoreForUser } = useData();
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const userStore = getStoreForUser(user?.id);
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
@@ -17,11 +19,13 @@ export function UserLayout() {
 
   const navLinks = (user && !isAuthPage) ? [
     { to: '/dashboard',  label: 'Dashboard Pasar',  end: false },
+    { to: '/support',    label: 'Bantuan & Tiket',  end: false },
     { to: '/statistics', label: 'Statistik',        end: false },
     { to: '/contact',    label: 'Kontak Mitra',     end: false },
     { to: '/about',      label: 'Tentang Kami',     end: false },
   ] : [
     { to: '/',          label: 'Beranda',          end: true },
+    { to: '/support',    label: 'Bantuan & Tiket',  end: false },
     { to: '/statistics', label: 'Statistik',        end: false },
     { to: '/contact',    label: 'Kontak Mitra',     end: false },
     { to: '/about',      label: 'Tentang Kami',     end: false },
@@ -82,13 +86,21 @@ export function UserLayout() {
             </Link>
 
             {/* Seller Action Button */}
-            {user?.role === 'seller' ? (
+            {userStore?.status === 'approved' ? (
               <Link
                 to="/seller/dashboard"
                 className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-sand-700 bg-sand-100 hover:bg-sand-200 border border-sand-300 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
               >
                 <Store className="h-4 w-4 text-sand-600" />
                 Toko Saya
+              </Link>
+            ) : userStore?.status === 'pending' ? (
+              <Link
+                to="/register-seller"
+                className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+              >
+                <Store className="h-4 w-4 text-amber-600" />
+                Status Toko (Pending)
               </Link>
             ) : (
               <Link
@@ -114,7 +126,7 @@ export function UserLayout() {
                     {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <span className="hidden lg:inline">{user?.name || 'Pengguna'}</span>
-                  {user?.role === 'seller' && (
+                  {userStore?.status === 'approved' && (
                     <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Penjual</span>
                   )}
                 </div>
@@ -162,7 +174,7 @@ export function UserLayout() {
               ))}
             </nav>
             <div className="mt-3 pt-3 border-t border-ocean-100 space-y-2">
-              {user?.role === 'seller' ? (
+              {userStore?.status === 'approved' ? (
                 <Link
                   to="/seller/dashboard"
                   className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-sand-800 bg-sand-100 rounded-lg"
@@ -170,6 +182,15 @@ export function UserLayout() {
                 >
                   <Store className="h-4 w-4 text-sand-600" />
                   Dashboard Toko Saya
+                </Link>
+              ) : userStore?.status === 'pending' ? (
+                <Link
+                  to="/register-seller"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-amber-800 bg-amber-100 rounded-lg"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Store className="h-4 w-4 text-amber-600" />
+                  Status Pendaftaran Toko (Pending)
                 </Link>
               ) : (
                 <Link

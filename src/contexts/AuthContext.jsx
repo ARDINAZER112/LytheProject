@@ -51,61 +51,51 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password, rememberMe = true, captchaToken) => {
+  const login = async (email, password, rememberMe = true) => {
     try {
-      // 0. Fallback default admin (demo account, not a real Supabase Auth user)
+      // 1. Try querying PostgreSQL Supabase 'users' table
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Database query error during login, checking local fallback:', error.message);
+      }
+
+      if (dbUser) {
+        if (dbUser.password === password) {
+          const loggedUser = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            phone: dbUser.phone || '',
+            role: dbUser.role || 'customer',
+          };
+          saveUserSession(loggedUser, rememberMe);
+          // Log live IP address & location data upon login
+          logActivity({ action: 'login', userId: loggedUser.id, userName: loggedUser.name });
+          return { success: true, user: loggedUser };
+        } else {
+          return { success: false, error: 'Kata sandi salah. Silakan periksa kembali.' };
+        }
+      }
+
+      // If user not found in database, check fallback default admin
       if (email === initialAdmin.email && password === initialAdmin.password) {
         const adminData = { id: 1, name: initialAdmin.name, email: initialAdmin.email, role: 'admin' };
         saveUserSession(adminData, rememberMe);
+        // Log live IP address & location data upon login
         logActivity({ action: 'login', userId: adminData.id, userName: adminData.name });
         return { success: true, user: adminData };
       }
 
-      // 1. Authenticate against Supabase Auth (handles password hashing/verification)
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: captchaToken ? { captchaToken } : undefined,
-      });
-
-      if (authError) {
-        if (authError.message?.toLowerCase().includes('email not confirmed')) {
-          return {
-            success: false,
-            error: 'Email belum dikonfirmasi. Silakan cek email Anda dan klik link konfirmasi terlebih dahulu.',
-            requireEmailConfirmation: true,
-          };
-        }
-        return { success: false, error: 'Email atau kata sandi salah. Silakan periksa kembali.' };
-      }
-
-      // 2. Fetch profile data (name, role, app-level id) linked to this auth user
-      const { data: dbUser, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', authData.user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.warn('Profile lookup error during login:', profileError.message);
-      }
-
-      if (!dbUser) {
-        return {
-          success: false,
-          error: 'Akun terverifikasi, tapi profil tidak ditemukan. Hubungi admin.',
-        };
-      }
-
-      const loggedUser = {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role || 'customer',
+      // If account does not exist in PostgreSQL database
+      return { 
+        success: false, 
+        error: 'Akun tidak terdaftar. Silakan buat akun terlebih dahulu melalui halaman Daftar.' 
       };
-      saveUserSession(loggedUser, rememberMe);
-      logActivity({ action: 'login', userId: loggedUser.id, userName: loggedUser.name });
-      return { success: true, user: loggedUser };
 
     } catch (err) {
       console.error('Login process error:', err);
@@ -113,9 +103,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, captchaToken) => {
+  const register = async (name, email, password, phone = '', rememberMe = true) => {
     try {
-      // 1. Check if email already exists in our profile table
+      // 1. Check if email already exists in PostgreSQL
       const { data: existingUser } = await supabase
         .from('users')
         .select('id')
@@ -126,118 +116,47 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Email ini sudah terdaftar. Silakan masuk (login).' };
       }
 
-      // 2. Create the real Supabase Auth user. This is what actually triggers
-      //    Supabase to send the verification email — a plain table insert
-      //    never does, which was the root cause of OTP emails never arriving.
-      //    emailRedirectTo controls where the "Confirm your email" link in
-      //    that email sends the user back to.
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 2. Insert new user into PostgreSQL 'users' table
+      const newUserObj = {
+        name,
         email,
         password,
-        options: {
-          data: { name },
-          emailRedirectTo: `${window.location.origin}/login`,
-          ...(captchaToken ? { captchaToken } : {}),
-        },
-      });
+        phone,
+        role: 'customer',
+      };
 
-      if (authError) {
-        console.error('Supabase Auth signUp error:', authError);
-        return { success: false, error: authError.message || 'Gagal mendaftarkan akun.' };
-      }
-
-      if (!authData.user) {
-        return { success: false, error: 'Gagal mendaftarkan akun. Silakan coba lagi.' };
-      }
-
-      // 3. Create the profile row linked to the new auth user via auth_id.
       const { data: insertedUser, error: insertErr } = await supabase
         .from('users')
-        .insert([{ name, email, role: 'customer', auth_id: authData.user.id }])
+        .insert([newUserObj])
         .select()
         .single();
 
       if (insertErr) {
-        console.error('Error inserting user profile to Supabase:', insertErr);
-        return {
-          success: false,
-          error: 'Akun berhasil dibuat di sistem autentikasi, tapi gagal menyimpan profil. Hubungi admin.',
-        };
+        console.error('Error inserting user to Supabase:', insertErr);
+        // Fallback local save if database table is not initialized yet
+        const localUser = { id: Date.now(), name, email, phone, role: 'customer' };
+        saveUserSession(localUser, rememberMe);
+        logActivity({ action: 'register', userId: localUser.id, userName: localUser.name });
+        return { success: true, user: localUser };
       }
 
       const registeredUser = {
         id: insertedUser.id,
         name: insertedUser.name,
         email: insertedUser.email,
+        phone: insertedUser.phone || phone,
         role: insertedUser.role,
       };
 
-      // We do NOT save a local session here — the account is only usable
-      // after the person clicks the confirmation link in their email, then
-      // logs in normally with their email + password.
-      return { success: true, requireEmailConfirmation: true, user: registeredUser };
+      saveUserSession(registeredUser, rememberMe);
+      // Log live IP address & location data upon registration
+      logActivity({ action: 'register', userId: registeredUser.id, userName: registeredUser.name });
+      return { success: true, user: registeredUser };
 
     } catch (err) {
       console.error('Register process error:', err);
       return { success: false, error: 'Gagal mendaftarkan akun. Silakan coba lagi.' };
     }
-  };
-
-  // Resend the "confirm your email" link (type='signup') or the password
-  // reset OTP (type='recovery' — handled by requestPasswordReset instead).
-  const resendConfirmationEmail = async (email) => {
-    try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email });
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      console.error('Resend confirmation email error:', err);
-      return { success: false, error: err.message || 'Gagal mengirim ulang email konfirmasi.' };
-    }
-  };
-
-  const requestPasswordReset = async (email, captchaToken) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-        ...(captchaToken ? { captchaToken } : {}),
-      });
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      console.error('Request reset password error:', err);
-      return { success: false, error: err.message || 'Gagal mengirim email reset kata sandi.' };
-    }
-  };
-
-  // Kept for other potential uses, but the reset-password flow now uses the
-  // emailed confirmation link (handled by ResetPassword.jsx) instead of a
-  // manually-entered OTP code.
-  const verifyOTP = async (email, otp, type = 'recovery') => {
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({ email, token: otp, type });
-      if (error) throw error;
-      return { success: true, session: data.session };
-    } catch (err) {
-      console.error('Verify OTP error:', err);
-      return { success: false, error: err.message || 'Kode OTP tidak valid.' };
-    }
-  };
-
-  const updatePassword = async (newPassword) => {
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      console.error('Update password error:', err);
-      return { success: false, error: err.message || 'Gagal memperbarui kata sandi.' };
-    }
-  };
-
-  const finalizeLogin = (userData, rememberMe = true) => {
-    saveUserSession(userData, rememberMe);
-    logActivity({ action: 'login_verified', userId: userData.id, userName: userData.name });
   };
 
   const updateUserRole = async (newRole) => {
@@ -271,19 +190,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      authLoading, 
-      login, 
-      register, 
-      logout, 
-      updateUserRole,
-      requestPasswordReset,
-      verifyOTP,
-      resendConfirmationEmail,
-      updatePassword,
-      finalizeLogin
-    }}>
+    <AuthContext.Provider value={{ user, authLoading, login, register, logout, updateUserRole }}>
       {children}
     </AuthContext.Provider>
   );

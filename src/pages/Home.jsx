@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { Button } from '../components/ui/Button';
-import { ArrowRight, Anchor, TrendingUp, Users, Star, ShoppingCart, Truck, CheckCircle, UserPlus, LogIn, LayoutDashboard } from 'lucide-react';
+import { Input } from '../components/ui/Input';
+import { 
+  ArrowRight, Anchor, TrendingUp, Users, Star, ShoppingCart, 
+  Truck, CheckCircle, UserPlus, LogIn, LayoutDashboard, 
+  Headphones, MessageSquare, Mail, Phone, Clock, LifeBuoy, Send, X, CheckCircle2
+} from 'lucide-react';
 
 // ── Stats counter data ──────────────────────────────────────
 const stats = [
@@ -33,6 +40,40 @@ const testimonials = [
 
 export function Home() {
   const { user } = useAuth();
+  const { createTicket } = useData();
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [ticketForm, setTicketForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: '',
+    category: 'Pertanyaan Umum',
+    subject: '',
+    message: ''
+  });
+  const [submittedTicket, setSubmittedTicket] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const res = await createTicket(ticketForm);
+    setIsSubmitting(false);
+    if (res?.success) {
+      setSubmittedTicket(res.ticket);
+    }
+  };
+
+  const resetForm = () => {
+    setSubmittedTicket(null);
+    setTicketForm({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: '',
+      category: 'Pertanyaan Umum',
+      subject: '',
+      message: ''
+    });
+  };
 
   return (
     <div className="flex flex-col">
@@ -210,6 +251,96 @@ export function Home() {
         </div>
       </section>
 
+      {/* ── VISITOR SUPPORT & LIVE ADMIN CHAT SECTION ── */}
+      <section className="py-16 bg-white border-t border-b border-ocean-100">
+        <div className="container mx-auto px-4">
+          <div className="bg-gradient-to-br from-ocean-900 via-ocean-800 to-ocean-950 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+              <Headphones className="w-96 h-96 text-white" />
+            </div>
+
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-7 space-y-4">
+                <div className="inline-flex items-center gap-2 bg-sand-500/20 text-sand-300 text-xs font-bold px-3.5 py-1.5 rounded-full border border-sand-400/30">
+                  <LifeBuoy className="h-4 w-4 text-sand-400" />
+                  Pusat Layanan Bantuan & Dukungan Pengunjung
+                </div>
+                <h2 className="text-3xl md:text-4xl font-extrabold leading-tight">
+                  Butuh Bantuan, Kendala Akun, atau Pengaduan?
+                </h2>
+                <p className="text-ocean-200 text-base leading-relaxed max-w-xl">
+                  Tim Administrator JaringLokal siap melayani pertanyaan Anda — termasuk kendala lupa password, bantuan pendaftaran toko, hingga pengaduan transaksi.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 text-sm text-ocean-100">
+                  <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                    <div className="p-2.5 bg-sand-500/20 rounded-xl text-sand-300">
+                      <Phone className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-ocean-300">Hotline / WhatsApp</div>
+                      <div className="font-bold text-white">+62 812-3456-7890</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                    <div className="p-2.5 bg-ocean-500/20 rounded-xl text-ocean-300">
+                      <Mail className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-ocean-300">Email Resmi Admin</div>
+                      <div className="font-bold text-white">bantuan@jaringlokal.id</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                    <div className="p-2.5 bg-emerald-500/20 rounded-xl text-emerald-300">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-ocean-300">Jam Operasional</div>
+                      <div className="font-bold text-white">08:00 - 20:00 WIB</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                    <div className="p-2.5 bg-purple-500/20 rounded-xl text-purple-300">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-ocean-300">Respon Balasan Admin</div>
+                      <div className="font-bold text-white">Sistem Tiket Live Chat</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-5 flex flex-col items-center lg:items-end space-y-4">
+                <div className="bg-white/10 backdrop-blur border border-white/20 rounded-3xl p-6 text-center w-full max-w-md shadow-xl">
+                  <MessageSquare className="h-12 w-12 text-sand-400 mx-auto mb-3 animate-bounce" />
+                  <h3 className="text-xl font-bold text-white mb-1">Chat Langsung Administrator</h3>
+                  <p className="text-xs text-ocean-200 mb-5">Kirimkan pertanyaan atau laporan Anda melalui metode tiket interaktif.</p>
+                  
+                  <div className="space-y-3">
+                    <Button
+                      onClick={() => setShowChatModal(true)}
+                      size="lg"
+                      className="w-full bg-sand-500 hover:bg-sand-400 text-white font-bold h-12 text-sm shadow-lg shadow-sand-900/40 flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Chat / Buat Tiket Dukungan
+                    </Button>
+                    <Link to="/support" className="block text-xs text-ocean-200 hover:text-white underline pt-1">
+                      Lihat Daftar Tiket Saya yang Sudah Ada →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA BANNER ── */}
       <section className="py-20 bg-gradient-to-r from-ocean-700 to-ocean-500">
         <div className="container mx-auto px-4 text-center">
@@ -241,6 +372,158 @@ export function Home() {
           </div>
         </div>
       </section>
+
+      {/* ── LANDING PAGE LIVE SUPPORT CHAT MODAL ── */}
+      {showChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-ocean-100 animate-slide-up relative">
+            <div className="bg-ocean-900 p-6 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-sand-500 rounded-xl text-white">
+                  <Headphones className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Chat Support Administrator</h3>
+                  <p className="text-xs text-ocean-200">Layanan tiket pertanyaan & pengaduan pengunjung</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowChatModal(false); resetForm(); }}
+                className="text-ocean-300 hover:text-white p-1 rounded-lg hover:bg-ocean-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {submittedTicket ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="h-10 w-10" />
+                  </div>
+                  <h4 className="text-xl font-bold text-ocean-900">Tiket Dukungan Terkirim!</h4>
+                  <div className="bg-ocean-50 p-4 rounded-2xl border border-ocean-100 text-left text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-ocean-500">Kode Tiket:</span>
+                      <span className="font-bold text-ocean-900 bg-sand-100 text-sand-800 px-2 py-0.5 rounded">{submittedTicket.ticket_code}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-ocean-500">Kategori:</span>
+                      <span className="font-semibold text-ocean-800">{submittedTicket.category}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-ocean-500">Status:</span>
+                      <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs">Terbuka</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-ocean-600 leading-relaxed">
+                    Tiket Anda telah masuk ke panel Admin. Anda dapat memantau percakapan dan balasan admin kapan saja di halaman Support.
+                  </p>
+                  <div className="pt-2 flex gap-3">
+                    <Button
+                      onClick={() => { setShowChatModal(false); resetForm(); }}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Tutup
+                    </Button>
+                    <Link to="/support" className="flex-1">
+                      <Button className="w-full bg-ocean-600">
+                        Buka Portal Support →
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSupportSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-ocean-700 mb-1">Nama Lengkap / Visitor</label>
+                    <Input
+                      required
+                      value={ticketForm.name}
+                      onChange={(e) => setTicketForm({ ...ticketForm, name: e.target.value })}
+                      placeholder="Masukkan nama Anda"
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-ocean-700 mb-1">Email Kontak</label>
+                      <Input
+                        type="email"
+                        required
+                        value={ticketForm.email}
+                        onChange={(e) => setTicketForm({ ...ticketForm, email: e.target.value })}
+                        placeholder="email@contoh.com"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-ocean-700 mb-1">No. WhatsApp / Telepon</label>
+                      <Input
+                        type="tel"
+                        value={ticketForm.phone}
+                        onChange={(e) => setTicketForm({ ...ticketForm, phone: e.target.value })}
+                        placeholder="0812..."
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ocean-700 mb-1">Kategori Masalah / Pertanyaan</label>
+                    <select
+                      value={ticketForm.category}
+                      onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                      className="w-full h-10 px-3 text-sm rounded-xl border border-ocean-200 bg-white text-ocean-900 font-medium focus:ring-2 focus:ring-ocean-500"
+                    >
+                      <option value="Pertanyaan Umum">Pertanyaan Umum</option>
+                      <option value="Lupa Password / Reset Password">Lupa Password / Reset Password</option>
+                      <option value="Kendala Transaksi & Pembayaran">Kendala Transaksi & Pembayaran</option>
+                      <option value="Pengaduan Layanan & Produk">Pengaduan Layanan & Produk</option>
+                      <option value="Pendaftaran Toko & Penjual">Pendaftaran Toko & Penjual</option>
+                      <option value="Lainnya">Lainnya</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ocean-700 mb-1">Subjek Tiket</label>
+                    <Input
+                      required
+                      value={ticketForm.subject}
+                      onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                      placeholder="Contoh: Lupa password akun / Pertanyaan pengiriman"
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ocean-700 mb-1">Pesan / Detail Masalah</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={ticketForm.message}
+                      onChange={(e) => setTicketForm({ ...ticketForm, message: e.target.value })}
+                      placeholder="Tuliskan pertanyaan atau kendala yang Anda alami secara detail..."
+                      className="w-full p-3 text-sm rounded-xl border border-ocean-200 bg-white text-ocean-900 focus:outline-none focus:ring-2 focus:ring-ocean-500 resize-none"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-11 text-sm font-semibold bg-sand-500 hover:bg-sand-400 text-white flex items-center justify-center gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isSubmitting ? 'Mengirim Tiket...' : 'Kirim Tiket Support ke Admin'}
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

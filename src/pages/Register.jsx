@@ -1,31 +1,22 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Captcha } from '../components/ui/Captcha';
-import { Ship, Eye, EyeOff, AlertCircle, CheckCircle, MailCheck } from 'lucide-react';
+import { Ship, Eye, EyeOff, AlertCircle, CheckCircle, Phone } from 'lucide-react';
 
 export function Register() {
   const [name, setName]             = useState('');
   const [email, setEmail]           = useState('');
+  const [phone, setPhone]           = useState('');
   const [password, setPassword]     = useState('');
   const [confirm, setConfirm]       = useState('');
   const [showPass, setShowPass]     = useState(false);
   const [showConf, setShowConf]     = useState(false);
   const [error, setError]           = useState('');
   const [loading, setLoading]       = useState(false);
-
-  const [view, setView] = useState('register'); // 'register' | 'check-email'
-
-  // CAPTCHA
-  const captchaRef = useRef(null);
-  const [captchaToken, setCaptchaToken] = useState('');
-
-  const { register, resendConfirmationEmail } = useAuth();
+  const { register } = useAuth();
   const navigate     = useNavigate();
-  const [resending, setResending]   = useState(false);
-  const [resendMsg, setResendMsg]   = useState('');
 
   const passwordStrength = () => {
     if (password.length === 0) return null;
@@ -35,7 +26,7 @@ export function Register() {
   };
   const strength = passwordStrength();
 
-  const handleRegisterSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (password !== confirm) {
@@ -46,33 +37,16 @@ export function Register() {
       setError('Kata sandi minimal 6 karakter.');
       return;
     }
-    if (!captchaToken) {
-      setError('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
-      return;
-    }
     setLoading(true);
 
-    const result = await register(name, email, password, captchaToken);
+    const result = await register(name, email, password, phone);
     setLoading(false);
 
-    captchaRef.current?.resetCaptcha();
-    setCaptchaToken('');
-
-    if (result.success && result.requireEmailConfirmation) {
-      setView('check-email');
-    } else if (result.success) {
-      navigate('/login');
+    if (result.success) {
+      navigate('/dashboard');
     } else {
       setError(result.error || 'Gagal mendaftar. Silakan coba lagi.');
     }
-  };
-
-  const handleResendConfirmation = async () => {
-    setResendMsg('');
-    setResending(true);
-    const result = await resendConfirmationEmail(email);
-    setResending(false);
-    setResendMsg(result.success ? 'Email konfirmasi baru telah dikirim.' : (result.error || 'Gagal mengirim ulang email konfirmasi.'));
   };
 
   return (
@@ -121,131 +95,94 @@ export function Register() {
           </div>
 
           <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-ocean-100 animate-slide-up">
-            {view === 'register' && (
-              <>
-                <h2 className="text-2xl font-bold text-ocean-900 mb-1">Buat Akun Baru</h2>
-                <p className="text-ocean-500 text-sm mb-8">Isi formulir di bawah untuk bergabung.</p>
+            <h2 className="text-2xl font-bold text-ocean-900 mb-1">Buat Akun Baru</h2>
+            <p className="text-ocean-500 text-sm mb-8">Isi formulir di bawah untuk bergabung.</p>
 
-                {error && (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    {error}
-                  </div>
-                )}
-
-                <form onSubmit={handleRegisterSubmit} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-medium text-ocean-700 mb-1.5">Nama Lengkap</label>
-                    <Input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Budi Santoso" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email</label>
-                    <Input type="email" required value={email} onChange={(e) => { setEmail(e.target.value); setError(''); }} placeholder="budi@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-ocean-700 mb-1.5">Kata Sandi</label>
-                    <div className="relative">
-                      <Input
-                        type={showPass ? 'text' : 'password'}
-                        required
-                        value={password}
-                        onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                        placeholder="Min. 6 karakter"
-                        className="pr-10"
-                      />
-                      <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-700">
-                        {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {strength && (
-                      <div className="mt-2">
-                        <div className="h-1.5 bg-ocean-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-300 ${strength.color} ${strength.width}`} />
-                        </div>
-                        <p className="text-xs text-ocean-500 mt-1">Kekuatan: <span className="font-medium">{strength.level}</span></p>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-ocean-700 mb-1.5">Konfirmasi Kata Sandi</label>
-                    <div className="relative">
-                      <Input
-                        type={showConf ? 'text' : 'password'}
-                        required
-                        value={confirm}
-                        onChange={(e) => { setConfirm(e.target.value); setError(''); }}
-                        placeholder="Ulangi kata sandi"
-                        className={`pr-10 ${confirm && confirm !== password ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
-                      />
-                      <button type="button" onClick={() => setShowConf(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-700">
-                        {showConf ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {confirm && confirm !== password && (
-                      <p className="text-red-500 text-xs mt-1">Kata sandi tidak cocok</p>
-                    )}
-                  </div>
-                  {/* CAPTCHA */}
-                  <Captcha
-                    ref={captchaRef}
-                    onVerify={setCaptchaToken}
-                    onExpire={() => setCaptchaToken('')}
-                  />
-
-                  <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
-                    {loading ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                        </svg>
-                        Mendaftarkan...
-                      </span>
-                    ) : 'Daftar Sekarang'}
-                  </Button>
-                </form>
-
-                <div className="mt-6 text-center text-sm text-ocean-600">
-                  Sudah punya akun?{' '}
-                  <Link to="/login" className="font-semibold text-ocean-700 hover:text-ocean-900 underline underline-offset-2">
-                    Masuk
-                  </Link>
-                </div>
-              </>
+            {error && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {error}
+              </div>
             )}
 
-            {view === 'check-email' && (
-              <>
-                <div className="flex justify-center mb-4">
-                  <div className="h-14 w-14 rounded-full bg-ocean-100 flex items-center justify-center">
-                    <MailCheck className="h-7 w-7 text-ocean-600" />
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold text-ocean-900 mb-1 text-center">Cek Email Anda</h2>
-                <p className="text-ocean-500 text-sm mb-8 text-center">
-                  Kami telah mengirim link konfirmasi ke <span className="font-semibold">{email}</span>.
-                  Klik link tersebut untuk mengaktifkan akun, lalu masuk seperti biasa.
-                </p>
-
-                {resendMsg && (
-                  <p className="text-sm text-center mb-4 text-ocean-600">{resendMsg}</p>
-                )}
-
-                <div className="space-y-3">
-                  <Button onClick={() => navigate('/login')} className="w-full h-12 text-base">
-                    Ke Halaman Masuk
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={handleResendConfirmation}
-                    disabled={resending}
-                    className="w-full text-center text-sm font-semibold text-ocean-700 hover:text-ocean-900 hover:underline disabled:opacity-50"
-                  >
-                    {resending ? 'Mengirim ulang...' : 'Tidak menerima email? Kirim ulang'}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-ocean-700 mb-1.5">Nama Lengkap</label>
+                <Input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Budi Santoso" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email</label>
+                <Input type="email" required value={email} onChange={(e) => { setEmail(e.target.value); setError(''); }} placeholder="budi@email.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ocean-700 mb-1.5 flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-ocean-500" />
+                  No. Handphone / WhatsApp
+                </label>
+                <Input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="081234567890" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ocean-700 mb-1.5">Kata Sandi</label>
+                <div className="relative">
+                  <Input
+                    type={showPass ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                    placeholder="Min. 6 karakter"
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-700">
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-              </>
-            )}
+                {strength && (
+                  <div className="mt-2">
+                    <div className="h-1.5 bg-ocean-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-300 ${strength.color} ${strength.width}`} />
+                    </div>
+                    <p className="text-xs text-ocean-500 mt-1">Kekuatan: <span className="font-medium">{strength.level}</span></p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ocean-700 mb-1.5">Konfirmasi Kata Sandi</label>
+                <div className="relative">
+                  <Input
+                    type={showConf ? 'text' : 'password'}
+                    required
+                    value={confirm}
+                    onChange={(e) => { setConfirm(e.target.value); setError(''); }}
+                    placeholder="Ulangi kata sandi"
+                    className={`pr-10 ${confirm && confirm !== password ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                  />
+                  <button type="button" onClick={() => setShowConf(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-700">
+                    {showConf ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {confirm && confirm !== password && (
+                  <p className="text-red-500 text-xs mt-1">Kata sandi tidak cocok</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Mendaftarkan...
+                  </span>
+                ) : 'Daftar Sekarang'}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-ocean-600">
+              Sudah punya akun?{' '}
+              <Link to="/login" className="font-semibold text-ocean-700 hover:text-ocean-900 underline underline-offset-2">
+                Masuk
+              </Link>
+            </div>
           </div>
         </div>
       </div>
