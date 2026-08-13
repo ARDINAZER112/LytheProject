@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, QrCode, Download, Share2, ExternalLink } from 'lucide-react';
+import { X, Copy, Check, QrCode, ExternalLink } from 'lucide-react';
 
 export function QRCodeModal({ isOpen, onClose, title, subtitle, value, type = 'product' }) {
   const [copied, setCopied] = useState(false);

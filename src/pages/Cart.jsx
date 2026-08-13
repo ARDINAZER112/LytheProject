@@ -33,13 +33,13 @@ export function Cart() {
     addToast(`"${item.name}" dihapus dari keranjang`, 'info');
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!user) {
       addToast('Silakan masuk terlebih dahulu untuk checkout.', 'error');
       setTimeout(() => navigate('/login'), 1200);
       return;
     }
-    const success = checkout(user.id, user.name);
+    const success = await checkout(user.id, user.name);
     if (success) {
       addToast('Pesanan berhasil dibuat! Terima kasih 🎉', 'success', 4000);
       setTimeout(() => navigate('/catalog'), 1500);

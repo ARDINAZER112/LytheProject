@@ -196,7 +196,7 @@ export function UserDashboard() {
               <div className="text-xs text-ocean-200 font-medium mb-1">Total Pesanan</div>
               <div className="text-xl font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 text-sand-400" />
-                {(orders || []).length} Pesanan
+                {(orders || []).filter(o => o.userName === user?.name).length} Pesanan
               </div>
             </div>
             {user?.role === 'seller' ? (
