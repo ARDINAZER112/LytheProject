@@ -1,6 +1,6 @@
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, Package, ClipboardList, LogOut, Ship } from 'lucide-react';
+import { LayoutDashboard, Package, ClipboardList, LogOut, Ship, Store, Headphones } from 'lucide-react';
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
@@ -12,8 +12,10 @@ export function AdminLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Persetujuan Toko', path: '/admin/stores', icon: Store },
     { name: 'Daftar Produk', path: '/admin/products', icon: Package },
     { name: 'Daftar Transaksi', path: '/admin/orders', icon: ClipboardList },
+    { name: 'Tiket Dukungan', path: '/admin/tickets', icon: Headphones },
   ];
 
   return (

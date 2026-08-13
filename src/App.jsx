@@ -16,10 +16,9 @@ import { Cart } from './pages/Cart';
 import { Contact } from './pages/Contact';
 import { About } from './pages/About';
 import { Statistics } from './pages/Statistics';
+import { Support } from './pages/Support';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { ResetPassword } from './pages/ResetPassword';
 
 // Seller Pages
 import { SellerRegister } from './pages/SellerRegister';
@@ -29,6 +28,8 @@ import { SellerDashboard } from './pages/SellerDashboard';
 import { Dashboard } from './pages/admin/Dashboard';
 import { Products } from './pages/admin/Products';
 import { Orders } from './pages/admin/Orders';
+import { Stores } from './pages/admin/Stores';
+import { AdminTickets } from './pages/admin/Tickets';
 
 function ProtectedRoute({ children }) {
   const { user, authLoading } = useAuth();
@@ -56,6 +57,7 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="catalog" element={<Catalog />} />
+              <Route path="support" element={<Support />} />
               <Route path="cart" element={
                 <ProtectedRoute>
                   <Cart />
@@ -66,8 +68,6 @@ function App() {
               <Route path="statistics" element={<Statistics />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
-              <Route path="forgot-password" element={<ForgotPassword />} />
-              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="register-seller" element={<SellerRegister />} />
               <Route path="seller/dashboard" element={
                 <ProtectedRoute>
@@ -79,8 +79,10 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
+              <Route path="stores" element={<Stores />} />
               <Route path="products" element={<Products />} />
               <Route path="orders" element={<Orders />} />
+              <Route path="tickets" element={<AdminTickets />} />
             </Route>
           </Routes>
         </DataProvider>

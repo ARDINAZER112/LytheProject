@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Captcha } from '../components/ui/Captcha';
-import { Ship, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Ship, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail]       = useState(() => localStorage.getItem('jaringlokal_remembered_email') || '');
@@ -13,32 +12,16 @@ export function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-
-  // CAPTCHA
-  const captchaRef = useRef(null);
-  const [captchaToken, setCaptchaToken] = useState('');
-
   const { login } = useAuth();
   const navigate  = useNavigate();
-  const location  = useLocation();
 
-  const handleLoginSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!captchaToken) {
-      setError('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
-      return;
-    }
-
     setLoading(true);
-    const result = await login(email, password, rememberMe, captchaToken);
+    
+    const result = await login(email, password, rememberMe);
     setLoading(false);
-
-    // A captcha token can only be used once — always reset the widget after
-    // a submit attempt, whether it succeeded or failed.
-    captchaRef.current?.resetCaptcha();
-    setCaptchaToken('');
 
     if (result.success) {
       if (result.user?.role === 'admin' || email === 'admin@jaringlokal.com') {
@@ -74,11 +57,6 @@ export function Login() {
           <p className="text-ocean-200 text-lg leading-relaxed max-w-sm">
             Masuk untuk melanjutkan berbelanja hasil laut segar langsung dari nelayan pesisir Tuban.
           </p>
-          <div className="mt-10 p-5 bg-white/10 backdrop-blur rounded-2xl border border-white/20 max-w-xs">
-            <p className="text-xs text-ocean-200 mb-1 font-semibold uppercase tracking-wider">Demo Admin</p>
-            <p className="text-white text-sm font-mono">admin@jaringlokal.com</p>
-            <p className="text-white text-sm font-mono">admin123</p>
-          </div>
         </div>
       </div>
 
@@ -97,13 +75,6 @@ export function Login() {
             <h2 className="text-2xl font-bold text-ocean-900 mb-1">Masuk ke Akun</h2>
             <p className="text-ocean-500 text-sm mb-8">Masukkan email dan kata sandi Anda.</p>
 
-            {location.state?.resetSuccess && (
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-6">
-                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                Kata sandi berhasil diperbarui. Silakan masuk dengan kata sandi baru Anda.
-              </div>
-            )}
-
             {error && (
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -111,7 +82,7 @@ export function Login() {
               </div>
             )}
 
-            <form onSubmit={handleLoginSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email</label>
                 <Input
@@ -144,31 +115,23 @@ export function Login() {
               </div>
 
               {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-ocean-700 select-none">
+              <div className="flex items-center justify-between pt-1 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer text-ocean-700 select-none">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 text-ocean-600 rounded border-ocean-300 focus:ring-ocean-500 cursor-pointer"
                   />
-                  <span>Ingat Saya (Remember Me)</span>
+                  <span>Ingat Saya</span>
                 </label>
                 <Link
-                  to="/forgot-password"
-                  state={{ email }}
-                  className="text-sm font-semibold text-ocean-700 hover:text-ocean-900 hover:underline"
+                  to={`/support?category=${encodeURIComponent('Lupa Password / Reset Password')}&email=${encodeURIComponent(email)}`}
+                  className="font-medium text-ocean-600 hover:text-ocean-900 hover:underline text-xs sm:text-sm"
                 >
-                  Lupa Kata Sandi?
+                  Lupa Password?
                 </Link>
               </div>
-
-              {/* CAPTCHA */}
-              <Captcha
-                ref={captchaRef}
-                onVerify={setCaptchaToken}
-                onExpire={() => setCaptchaToken('')}
-              />
 
               <Button
                 type="submit"
@@ -187,11 +150,19 @@ export function Login() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-ocean-600">
-              Belum punya akun?{' '}
-              <Link to="/register" className="font-semibold text-ocean-700 hover:text-ocean-900 underline underline-offset-2">
-                Daftar Sekarang
-              </Link>
+            <div className="mt-6 pt-4 border-t border-ocean-100 flex flex-col gap-2 text-center text-sm text-ocean-600">
+              <div>
+                Belum punya akun?{' '}
+                <Link to="/register" className="font-semibold text-ocean-700 hover:text-ocean-900 underline underline-offset-2">
+                  Daftar Sekarang
+                </Link>
+              </div>
+              <div className="text-xs text-ocean-500 mt-1">
+                Mengalami masalah lain?{' '}
+                <Link to="/support" className="font-semibold text-sand-700 hover:text-sand-900 underline">
+                  Pusat Bantuan & Tiket Support
+                </Link>
+              </div>
             </div>
           </div>
         </div>

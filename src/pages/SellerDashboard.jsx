@@ -136,14 +136,27 @@ export function SellerDashboard() {
     }
   };
 
-  if (!user || user.role !== 'seller') {
+  if (!user || user.role !== 'seller' || !userStore || userStore.status !== 'approved') {
+    const isPending = userStore?.status === 'pending';
+    const isRejected = userStore?.status === 'rejected';
+
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <Store className="h-16 w-16 text-ocean-300 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-ocean-900 mb-2">Akses Terbatas</h2>
-        <p className="text-ocean-600 mb-6">Hanya akun terdaftar sebagai Penjual yang dapat mengakses halaman ini.</p>
+      <div className="container mx-auto px-4 py-16 text-center max-w-xl">
+        <Store className="h-16 w-16 text-ocean-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-ocean-900 mb-2">
+          {isPending ? 'Permohonan Toko Dalam Peninjauan' : isRejected ? 'Permohonan Toko Ditolak' : 'Akses Khusus Penjual Terdaftar'}
+        </h2>
+        <p className="text-ocean-600 text-sm mb-6 leading-relaxed">
+          {isPending 
+            ? 'Permohonan pendaftaran toko Anda saat ini sedang menunggu persetujuan dari Admin. Anda akan diberikan akses berjualan setelah aplikasi disetujui.'
+            : isRejected
+            ? 'Mohon maaf, aplikasi pendaftaran toko Anda telah ditolak oleh admin. Silakan periksa status permohonan Anda.'
+            : 'Hanya akun penjual yang telah disetujui oleh admin yang dapat mengakses Dashboard Penjual.'}
+        </p>
         <Link to="/register-seller">
-          <Button>Daftar Sebagai Penjual Now</Button>
+          <Button className="px-6">
+            {userStore ? 'Lihat Status Pendaftaran Toko' : 'Daftar Sebagai Penjual'}
+          </Button>
         </Link>
       </div>
     );

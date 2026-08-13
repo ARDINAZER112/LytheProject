@@ -84,15 +84,35 @@ export function UserDashboard() {
   }
 
   const cartCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const safeProducts = products || [];
-  const safeStores = stores || [];
+  
+  // Filter stores: strictly ONLY approved stores appear in the showcase and marketplace
+  const approvedStores = (stores || []).filter(s => s.status === 'approved');
+  const unapprovedStoreNames = (stores || [])
+    .filter(s => s.status === 'pending' || s.status === 'rejected')
+    .map(s => s.store_name);
+
+  // Filter products: only products from approved stores (or products not bound to pending/rejected stores)
+  const safeProducts = (products || []).filter(p => !unapprovedStoreNames.includes(p.store_name));
 
   const categories = ['Semua', ...new Set(safeProducts.map(p => p.category).filter(Boolean))];
-  const storeList  = ['Semua Toko', ...new Set(safeProducts.map(p => p.store_name).filter(Boolean))];
+  const storeList  = ['Semua Toko', ...approvedStores.map(p => p.store_name).filter(Boolean)];
 
   // Store metrics computation
   const getProductCountForStore = (storeName) => {
     return safeProducts.filter(p => p.store_name === storeName).length;
+  };
+
+  const handleSelectStore = (storeName) => {
+    if (selectedStore === storeName) {
+      setSelectedStore('Semua Toko');
+    } else {
+      setSelectedStore(storeName);
+      // Smooth scroll to product catalog
+      const catalogElem = document.getElementById('marketplace-catalog');
+      if (catalogElem) {
+        catalogElem.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   };
 
   const filteredProducts = safeProducts
@@ -208,7 +228,7 @@ export function UserDashboard() {
           <div>
             <h2 className="text-xl font-bold text-ocean-900 flex items-center gap-2">
               <Store className="h-5 w-5 text-ocean-600" />
-              Toko Nelayan & Pengolah Pesisir
+              Fishermen & Coastal Processors' Shops (Toko Nelayan & Pengolah Pesisir)
             </h2>
             <p className="text-ocean-500 text-xs md:text-sm">Klik toko untuk langsung melihat produk yang ditawarkan.</p>
           </div>
@@ -224,14 +244,14 @@ export function UserDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {safeStores.map((st) => {
+          {approvedStores.map((st) => {
             const isSelected = selectedStore === st.store_name;
             const productCount = getProductCountForStore(st.store_name);
 
             return (
               <div
                 key={st.id}
-                onClick={() => setSelectedStore(isSelected ? 'Semua Toko' : st.store_name)}
+                onClick={() => handleSelectStore(st.store_name)}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${
                   isSelected
                     ? 'bg-ocean-900 text-white border-ocean-900 shadow-md ring-2 ring-sand-400'
@@ -282,7 +302,7 @@ export function UserDashboard() {
       </div>
 
       {/* ── Marketplace Section & Controls ── */}
-      <div>
+      <div id="marketplace-catalog">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h2 className="text-xl font-bold text-ocean-900">Katalog Produk Live</h2>

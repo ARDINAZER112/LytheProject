@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Store, Building2, MapPin, Phone, FileText, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Store, Building2, MapPin, Phone, FileText, CheckCircle2, Clock, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 
 export function SellerRegister() {
   const { user } = useAuth();
@@ -14,10 +14,10 @@ export function SellerRegister() {
   const existingStore = getStoreForUser(user?.id);
 
   const [formData, setFormData] = useState({
-    store_name: existingStore?.store_name || '',
-    description: existingStore?.description || '',
-    address: existingStore?.address || '',
-    phone: existingStore?.phone || '',
+    store_name: '',
+    description: '',
+    address: '',
+    phone: user?.phone || '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -45,16 +45,40 @@ export function SellerRegister() {
       setLoading(false);
 
       if (res.success) {
-        setSuccessMsg('Pendaftaran toko berhasil tersimpan! Akun Anda kini aktif sebagai Penjual.');
-        setTimeout(() => {
-          navigate('/seller/dashboard');
-        }, 1500);
+        setSuccessMsg('Pendaftaran toko berhasil dikirim! Permohonan Anda kini menunggu persetujuan dari Admin.');
       } else {
-        setError(res.error || 'Gagal menyukai pendaftaran toko.');
+        setError(res.error || 'Gagal mengirimkan pendaftaran toko.');
       }
     } catch (err) {
       setLoading(false);
       setError('Terjadi kesalahan saat pendaftaran toko: ' + err.message);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            Disetujui (Approved)
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
+            <XCircle className="h-4 w-4 text-red-600" />
+            Ditolak (Rejected)
+          </span>
+        );
+      case 'pending':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+            <Clock className="h-4 w-4 text-amber-600" />
+            Menunggu Persetujuan Admin (Pending)
+          </span>
+        );
     }
   };
 
@@ -75,7 +99,7 @@ export function SellerRegister() {
               <Store className="h-8 w-8 text-sand-400" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold">Formulir Pendaftaran Penjual</h1>
+              <h1 className="text-2xl md:text-3xl font-extrabold">Pendaftaran & Status Toko Penjual</h1>
               <p className="text-ocean-200 text-sm">Buka toko Anda dan pasarkan hasil laut segar langsung ke konsumen.</p>
             </div>
           </div>
@@ -91,20 +115,93 @@ export function SellerRegister() {
                 <Button>Masuk ke Akun Anda</Button>
               </Link>
             </div>
-          ) : user.role === 'seller' && existingStore ? (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-6 rounded-xl text-center">
-              <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-2" />
-              <h3 className="text-xl font-bold mb-1">Toko Anda Sudah Terdaftar & Disetujui!</h3>
-              <p className="text-sm text-emerald-700 mb-4">
-                Nama Toko: <strong className="font-semibold">{existingStore.store_name}</strong>
-              </p>
-              <div className="flex justify-center gap-3">
-                <Link to="/seller/dashboard">
-                  <Button variant="primary">Buka Dashboard Penjual</Button>
-                </Link>
-                <Link to="/catalog">
-                  <Button variant="outline">Lihat Katalog Marketplace</Button>
-                </Link>
+          ) : existingStore ? (
+            <div className="space-y-6">
+              {/* Status Header Alert */}
+              {existingStore.status === 'pending' && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-6 rounded-2xl">
+                  <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-6 w-6 text-amber-600 flex-shrink-0" />
+                      <h3 className="text-lg font-bold">Permohonan Toko Sedang Ditinjau</h3>
+                    </div>
+                    {getStatusBadge(existingStore.status)}
+                  </div>
+                  <p className="text-sm text-amber-800 leading-relaxed mb-4">
+                    Permohonan pendaftaran toko Anda telah tersimpan dan sedang menunggu peninjauan serta persetujuan dari administrator sistem. Setelah disetujui, Anda akan mendapatkan hak akses penuh untuk menjual produk di marketplace.
+                  </p>
+                  <div className="p-3 bg-amber-100/60 rounded-xl text-xs text-amber-800 font-medium">
+                    Catatan: Selama permohonan masih dalam status diproses (pending), Anda tidak dapat mengajukan pendaftaran baru.
+                  </div>
+                </div>
+              )}
+
+              {existingStore.status === 'approved' && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-6 rounded-2xl text-center">
+                  <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-2" />
+                  <div className="mb-2">{getStatusBadge(existingStore.status)}</div>
+                  <h3 className="text-xl font-bold text-emerald-900 mb-1">Selamat! Toko Anda Telah Disetujui</h3>
+                  <p className="text-sm text-emerald-700 mb-6">
+                    Aplikasi pendaftaran toko Anda telah diverifikasi dan disetujui oleh admin. Anda sekarang memiliki akses penuh untuk berjualan.
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <Link to="/seller/dashboard">
+                      <Button variant="primary" className="px-6">Buka Dashboard Penjual</Button>
+                    </Link>
+                    <Link to="/catalog">
+                      <Button variant="outline">Lihat Katalog Marketplace</Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {existingStore.status === 'rejected' && (
+                <div className="bg-red-50 border border-red-200 text-red-900 p-6 rounded-2xl">
+                  <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-6 w-6 text-red-600 flex-shrink-0" />
+                      <h3 className="text-lg font-bold">Permohonan Toko Ditolak</h3>
+                    </div>
+                    {getStatusBadge(existingStore.status)}
+                  </div>
+                  <p className="text-sm text-red-700 leading-relaxed mb-4">
+                    Mohon maaf, permohonan pendaftaran toko Anda belum dapat disetujui oleh Administrator saat ini. Silakan hubungi tim dukungan kami untuk informasi lebih lanjut.
+                  </p>
+                  <Link to="/contact">
+                    <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
+                      Hubungi Tim Layanan Mitra
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {/* Application Details Summary */}
+              <div className="bg-ocean-50/70 border border-ocean-100 rounded-2xl p-6 space-y-4">
+                <h4 className="text-sm font-bold text-ocean-900 uppercase tracking-wider border-b border-ocean-100 pb-2">
+                  Detail Permohonan Pendaftaran Toko
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-ocean-500 block text-xs">Nama Toko</span>
+                    <span className="font-semibold text-ocean-900">{existingStore.store_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-ocean-500 block text-xs">Status Saat Ini</span>
+                    <span className="font-semibold capitalize text-ocean-900">{existingStore.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-ocean-500 block text-xs">No. WhatsApp / Telepon Usaha</span>
+                    <span className="font-semibold text-ocean-900">{existingStore.phone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-ocean-500 block text-xs">Alamat Toko</span>
+                    <span className="font-semibold text-ocean-900">{existingStore.address || '-'}</span>
+                  </div>
+                  <div className="md:col-span-2">
+                    <span className="text-ocean-500 block text-xs">Deskripsi Toko</span>
+                    <span className="text-ocean-800">{existingStore.description || '-'}</span>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -123,7 +220,6 @@ export function SellerRegister() {
                 </div>
               )}
 
-              {/* Form fields */}
               <div>
                 <label className="block text-sm font-medium text-ocean-800 mb-1.5 flex items-center gap-1.5">
                   <Building2 className="h-4 w-4 text-ocean-500" />
@@ -181,12 +277,19 @@ export function SellerRegister() {
                 </div>
               </div>
 
+              <div className="p-4 bg-ocean-50 border border-ocean-100 rounded-xl text-xs text-ocean-600 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-ocean-500 flex-shrink-0 mt-0.5" />
+                <span>
+                  Setelah mengajukan formulir, permohonan Anda akan disetujui secara manual oleh Admin (status: Pending). Akses berjualan akan aktif setelah mendapat persetujuan admin.
+                </span>
+              </div>
+
               <div className="pt-4 border-t border-ocean-100 flex items-center justify-end gap-3">
                 <Link to="/catalog">
                   <Button type="button" variant="outline">Batal</Button>
                 </Link>
                 <Button type="submit" disabled={loading} className="px-6 h-11 text-base">
-                  {loading ? 'Menyimpan & Menyetujui...' : 'Daftar & Minta Persetujuan Toko'}
+                  {loading ? 'Mengirimkan Permohonan...' : 'Kirim Permohonan Pendaftaran Toko'}
                 </Button>
               </div>
             </form>
