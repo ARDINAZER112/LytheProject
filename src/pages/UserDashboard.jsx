@@ -18,6 +18,7 @@ import {
   Plus,
   Minus,
   CheckCircle,
+  CheckCircle2,
   ShoppingBag,
   UserCheck,
   Building2,
@@ -25,11 +26,15 @@ import {
   MapPin,
   Sparkles,
   Filter,
-  QrCode
+  QrCode,
+  LifeBuoy,
+  Shield,
+  ShieldCheck,
+  MessageSquare
 } from 'lucide-react';
 
 const SORT_OPTIONS = [
-  { label: 'Terbaru',        value: 'default' },
+  { label: 'Terbaru', value: 'default' },
   { label: 'Harga Termurah', value: 'price-asc' },
   { label: 'Harga Termahal', value: 'price-desc' },
   { label: 'Stok Terbanyak', value: 'stock-desc' },
@@ -41,13 +46,13 @@ export function UserDashboard() {
   const { toasts, addToast, removeToast } = useToast();
   const navigate = useNavigate();
 
-  const [searchTerm, setSearchTerm]         = useState('');
-  const [filterCategory, setFilterCategory]  = useState('Semua');
-  const [selectedStore, setSelectedStore]     = useState('Semua Toko');
-  const [sort, setSort]                     = useState('default');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('Semua');
+  const [selectedStore, setSelectedStore] = useState('Semua Toko');
+  const [sort, setSort] = useState('default');
   const [activeModalProduct, setActiveModalProduct] = useState(null);
-  const [modalQty, setModalQty]             = useState(1);
-  const [qrModalConfig, setQrModalConfig]   = useState({
+  const [modalQty, setModalQty] = useState(1);
+  const [qrModalConfig, setQrModalConfig] = useState({
     isOpen: false,
     title: '',
     subtitle: '',
@@ -84,7 +89,7 @@ export function UserDashboard() {
   }
 
   const cartCount = (cart || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
-  
+
   // Filter stores: strictly ONLY approved stores appear in the showcase and marketplace
   const approvedStores = (stores || []).filter(s => s.status === 'approved');
   const unapprovedStoreNames = (stores || [])
@@ -95,7 +100,7 @@ export function UserDashboard() {
   const safeProducts = (products || []).filter(p => !unapprovedStoreNames.includes(p.store_name));
 
   const categories = ['Semua', ...new Set(safeProducts.map(p => p.category).filter(Boolean))];
-  const storeList  = ['Semua Toko', ...approvedStores.map(p => p.store_name).filter(Boolean)];
+  const storeList = ['Semua Toko', ...approvedStores.map(p => p.store_name).filter(Boolean)];
 
   // Store metrics computation
   const getProductCountForStore = (storeName) => {
@@ -118,15 +123,15 @@ export function UserDashboard() {
   const filteredProducts = safeProducts
     .filter(p => {
       const storeName = p.store_name || '';
-      const matchSearch   = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            storeName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        storeName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchCategory = filterCategory === 'Semua' || p.category === filterCategory;
-      const matchStore    = selectedStore === 'Semua Toko' || storeName === selectedStore;
+      const matchStore = selectedStore === 'Semua Toko' || storeName === selectedStore;
       return matchSearch && matchCategory && matchStore;
     })
     .sort((a, b) => {
-      if (sort === 'price-asc')  return (a.price || 0) - (b.price || 0);
+      if (sort === 'price-asc') return (a.price || 0) - (b.price || 0);
       if (sort === 'price-desc') return (b.price || 0) - (a.price || 0);
       if (sort === 'stock-desc') return (b.stock || 0) - (a.stock || 0);
       return 0;
@@ -149,11 +154,16 @@ export function UserDashboard() {
   // Find store details for modal
   const currentStoreInfo = activeModalProduct
     ? (stores || []).find(s => s.store_name === activeModalProduct.store_name) || {
-        store_name: activeModalProduct.store_name || 'Toko Nelayan Bahari Pak Bambang',
-        address: 'Pesisir Pantai Tuban, Jawa Timur',
-        description: 'Mitra nelayan dan UMKM pengolah hasil laut lokal Tuban.'
-      }
+      store_name: activeModalProduct.store_name || 'Toko Nelayan Bahari Pak Bambang',
+      address: 'Pesisir Pantai Tuban, Jawa Timur',
+      description: 'Mitra nelayan dan UMKM pengolah hasil laut lokal Tuban.'
+    }
     : null;
+
+  const myOrders = (orders || []).filter(o => 
+    (user?.id && (String(o.user_id) === String(user.id) || String(o.userId) === String(user.id))) ||
+    (user?.name && (o.userName === user.name || o.user_name === user.name))
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in space-y-8">
@@ -168,7 +178,7 @@ export function UserDashboard() {
           <div className="flex items-center gap-3 mb-2">
             <span className="bg-sand-500/30 text-sand-300 text-xs font-semibold px-3 py-1 rounded-full border border-sand-400/30 flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-sand-400" />
-              Pasar Nelayan & UMKM Pesisir
+              Pasar Nelayan &amp; UMKM Pesisir
             </span>
             {user?.role === 'seller' && (
               <span className="bg-amber-500/20 text-amber-300 text-xs font-semibold px-3 py-1 rounded-full border border-amber-400/30">
@@ -180,11 +190,11 @@ export function UserDashboard() {
             Dashboard Pasar JaringLokal
           </h1>
           <p className="text-ocean-200 text-sm md:text-base max-w-2xl leading-relaxed">
-            Selamat datang, <span className="text-sand-300 font-semibold">{user?.name || 'Pengguna'}</span>! Akses produk hasil laut segar & olahan langsung dari daftar toko nelayan pesisir.
+            Selamat datang, <span className="text-sand-300 font-semibold">{user?.name || 'Pengguna'}</span>! Akses produk hasil laut segar &amp; olahan langsung dari daftar toko nelayan pesisir.
           </p>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mt-6 pt-6 border-t border-ocean-700/60 max-w-xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mt-6 pt-6 border-t border-ocean-700/60 max-w-3xl">
             <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
               <div className="text-xs text-ocean-200 font-medium mb-1">Item di Keranjang</div>
               <div className="text-xl font-bold text-white flex items-center gap-2">
@@ -193,16 +203,26 @@ export function UserDashboard() {
               </div>
             </div>
             <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
-              <div className="text-xs text-ocean-200 font-medium mb-1">Total Pesanan</div>
+              <div className="text-xs text-ocean-200 font-medium mb-1">Pesanan Saya</div>
               <div className="text-xl font-bold text-white flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 text-sand-400" />
-                {(orders || []).length} Pesanan
+                {myOrders.length} Pesanan
               </div>
             </div>
+            <Link
+              to="/support"
+              className="bg-white/10 hover:bg-white/20 transition-all rounded-2xl p-3.5 border border-white/10 flex flex-col justify-center"
+            >
+              <div className="text-xs text-ocean-200 font-medium mb-1">Dukungan Dashboard</div>
+              <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
+                <LifeBuoy className="h-4 w-4 text-sand-400" />
+                Tiket Support →
+              </div>
+            </Link>
             {user?.role === 'seller' ? (
               <Link
                 to="/seller/dashboard"
-                className="col-span-2 sm:col-span-1 bg-sand-500 hover:bg-sand-400 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all shadow-md group"
+                className="bg-sand-500 hover:bg-sand-400 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all shadow-md group"
               >
                 <span>Kelola Toko Saya</span>
                 <span className="flex items-center gap-1 text-[11px] text-sand-100 font-normal mt-0.5 group-hover:translate-x-0.5 transition-transform">
@@ -212,15 +232,60 @@ export function UserDashboard() {
             ) : (
               <Link
                 to="/register-seller"
-                className="col-span-2 sm:col-span-1 bg-white/15 hover:bg-white/25 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all border border-white/20"
+                className="bg-white/15 hover:bg-white/25 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all border border-white/20"
               >
                 <span>Buka Toko Nelayan</span>
-                <span className="text-[10px] text-ocean-200 font-normal mt-0.5">Daftar sebagai Penjual</span>
+                <span className="text-[10px] text-ocean-200 font-normal mt-0.5">Daftar Penjual</span>
               </Link>
             )}
           </div>
         </div>
       </div>
+
+      {/* ── MY ESCROW ORDERS SECTION ── */}
+      {myOrders.length > 0 && (
+        <div className="bg-white rounded-3xl border border-ocean-100 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-ocean-900 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-emerald-600" />
+                Transaksi &amp; Rekening Bersama Aktif (Escrow Orders)
+              </h2>
+              <p className="text-ocean-500 text-xs">Pantau status pesanan dan hubungi nelayan &amp; admin dalam ruang chat escrow.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myOrders.map(ord => (
+              <div key={ord.id} className="p-4 rounded-2xl border border-ocean-100 bg-ocean-50/40 hover:bg-ocean-50 transition-all flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <span className="text-xs font-mono font-bold text-ocean-800">
+                      #{String(ord.id).slice(-6)}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {ord.status || 'Escrow Aktif'}
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-ocean-900 line-clamp-1">
+                    {ord.store_name || 'Toko Mitra Nelayan'}
+                  </div>
+                  <div className="text-xs text-ocean-500 mt-0.5">
+                    {(ord.items || []).length} jenis produk • Total: <strong>Rp {Number(ord.total_amount || ord.totalAmount).toLocaleString('id-ID')}</strong>
+                  </div>
+                </div>
+
+                <Link to={`/order-chat/${ord.id}`}>
+                  <Button size="sm" className="w-full h-9 text-xs bg-ocean-600 hover:bg-ocean-700 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>💬 Buka Chat Escrow 3 Pihak</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── STORE DIRECT SHOWCASE SECTION ── */}
       <div>
@@ -228,7 +293,7 @@ export function UserDashboard() {
           <div>
             <h2 className="text-xl font-bold text-ocean-900 flex items-center gap-2">
               <Store className="h-5 w-5 text-ocean-600" />
-              Fishermen & Coastal Processors' Shops (Toko Nelayan & Pengolah Pesisir)
+              Fishermen &amp; Coastal Processors' Shops (Toko Nelayan &amp; Pengolah Pesisir)
             </h2>
             <p className="text-ocean-500 text-xs md:text-sm">Klik toko untuk langsung melihat produk yang ditawarkan.</p>
           </div>
@@ -252,15 +317,13 @@ export function UserDashboard() {
               <div
                 key={st.id}
                 onClick={() => handleSelectStore(st.store_name)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${
-                  isSelected
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${isSelected
                     ? 'bg-ocean-900 text-white border-ocean-900 shadow-md ring-2 ring-sand-400'
                     : 'bg-white text-ocean-900 border-ocean-100 hover:border-ocean-300 hover:shadow-md'
-                }`}
+                  }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${
-                  isSelected ? 'bg-sand-500 text-white' : 'bg-ocean-100 text-ocean-700'
-                }`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${isSelected ? 'bg-sand-500 text-white' : 'bg-ocean-100 text-ocean-700'
+                  }`}>
                   <Store className="h-6 w-6" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -268,9 +331,8 @@ export function UserDashboard() {
                     <h3 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-ocean-900'}`}>
                       {st.store_name}
                     </h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                      isSelected ? 'bg-sand-400/30 text-sand-200' : 'bg-ocean-100 text-ocean-700'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${isSelected ? 'bg-sand-400/30 text-sand-200' : 'bg-ocean-100 text-ocean-700'
+                      }`}>
                       {productCount} Produk
                     </span>
                   </div>
@@ -284,11 +346,10 @@ export function UserDashboard() {
                     </span>
                     <button
                       onClick={(e) => handleShareStoreQR(e, st.store_name, st.address)}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        isSelected
+                      className={`p-1.5 rounded-lg transition-colors ${isSelected
                           ? 'bg-sand-400/20 text-sand-300 hover:bg-sand-400/40'
                           : 'bg-ocean-50 text-ocean-600 hover:bg-ocean-100'
-                      }`}
+                        }`}
                       title="Bagikan Kode QR Toko"
                     >
                       <QrCode className="h-4 w-4" />
@@ -307,7 +368,7 @@ export function UserDashboard() {
           <div>
             <h2 className="text-xl font-bold text-ocean-900">Katalog Produk Live</h2>
             <p className="text-ocean-500 text-xs md:text-sm">
-              {selectedStore === 'Semua Toko' 
+              {selectedStore === 'Semua Toko'
                 ? `Menampilkan ${filteredProducts.length} produk dari semua toko mitra.`
                 : `Menampilkan ${filteredProducts.length} produk dari "${selectedStore}".`}
             </p>
@@ -371,11 +432,10 @@ export function UserDashboard() {
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                  filterCategory === cat
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${filterCategory === cat
                     ? 'bg-ocean-600 text-white shadow-sm font-semibold'
                     : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100'
-                }`}
+                  }`}
               >
                 {cat}
               </button>

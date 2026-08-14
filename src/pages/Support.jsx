@@ -26,9 +26,9 @@ export function Support() {
     name: user?.name || '',
     email: initialEmail,
     phone: '',
-    category: initialCategory,
-    subject: initialCategory === 'Lupa Password / Reset Password' ? 'Permohonan Reset Password Akun' : '',
-    message: initialCategory === 'Lupa Password / Reset Password' ? 'Halo Admin, saya mengalami kendala lupa kata sandi akun saya. Mohon bantuan reset password.' : ''
+    category: initialCategory === 'Lupa Password / Reset Password' ? 'Pertanyaan Umum' : initialCategory,
+    subject: '',
+    message: ''
   });
 
   const [submittedTicket, setSubmittedTicket] = useState(null);
@@ -149,7 +149,7 @@ export function Support() {
             Layanan Pengaduan & Bantuan Pengunjung
           </h1>
           <p className="text-ocean-200 text-xs md:text-sm mt-1 max-w-xl">
-            Sampaikan pertanyaan, kendala lupa password, atau pengaduan layanan. Administrator kami akan memberikan balasan melalui sistem tiket live chat.
+            Sampaikan pertanyaan, kendala transaksi, atau pengaduan layanan. Administrator kami akan memberikan balasan melalui sistem tiket live chat.
           </p>
         </div>
 
@@ -288,7 +288,6 @@ export function Support() {
                       className="w-full h-11 px-3 text-sm rounded-xl border border-ocean-200 bg-white text-ocean-900 font-medium focus:ring-2 focus:ring-ocean-500"
                     >
                       <option value="Pertanyaan Umum">Pertanyaan Umum</option>
-                      <option value="Lupa Password / Reset Password">Lupa Password / Reset Password</option>
                       <option value="Kendala Transaksi & Pembayaran">Kendala Transaksi & Pembayaran</option>
                       <option value="Pengaduan Layanan & Produk">Pengaduan Layanan & Produk</option>
                       <option value="Pendaftaran Toko & Penjual">Pendaftaran Toko & Penjual</option>
@@ -339,7 +338,7 @@ export function Support() {
               <ul className="space-y-3 text-xs text-ocean-200 leading-relaxed">
                 <li className="flex items-start gap-2">
                   <span className="font-bold text-sand-400">1.</span>
-                  <span><strong>Lupa Password:</strong> Pilih kategori "Lupa Password / Reset Password" dan sertakan email terdaftar Anda.</span>
+                  <span><strong>Lupa Password:</strong> Layanan reset password adalah fungsi pra-login. Silakan hubungi WA Admin (<a href="https://wa.me/6281234567890?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan%20reset%20password." target="_blank" rel="noopener noreferrer" className="underline text-sand-300 font-semibold hover:text-white">Chat WA</a>).</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-bold text-sand-400">2.</span>

@@ -24,6 +24,9 @@ import { Register } from './pages/Register';
 import { SellerRegister } from './pages/SellerRegister';
 import { SellerDashboard } from './pages/SellerDashboard';
 
+// Escrow Chat Page
+import { EscrowChat } from './pages/EscrowChat';
+
 // Admin Pages
 import { Dashboard } from './pages/admin/Dashboard';
 import { Products } from './pages/admin/Products';
@@ -57,10 +60,19 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="catalog" element={<Catalog />} />
-              <Route path="support" element={<Support />} />
+              <Route path="support" element={
+                <ProtectedRoute>
+                  <Support />
+                </ProtectedRoute>
+              } />
               <Route path="cart" element={
                 <ProtectedRoute>
                   <Cart />
+                </ProtectedRoute>
+              } />
+              <Route path="order-chat/:orderId" element={
+                <ProtectedRoute>
+                  <EscrowChat />
                 </ProtectedRoute>
               } />
               <Route path="contact" element={<Contact />} />
@@ -82,6 +94,7 @@ function App() {
               <Route path="stores" element={<Stores />} />
               <Route path="products" element={<Products />} />
               <Route path="orders" element={<Orders />} />
+              <Route path="orders/chat/:orderId" element={<EscrowChat />} />
               <Route path="tickets" element={<AdminTickets />} />
             </Route>
           </Routes>

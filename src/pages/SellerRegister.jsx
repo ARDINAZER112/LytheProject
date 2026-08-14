@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Store, Building2, MapPin, Phone, FileText, CheckCircle2, Clock, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Store, Building2, MapPin, Phone, FileText, CheckCircle2, Clock, XCircle, AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 
 export function SellerRegister() {
   const { user } = useAuth();
@@ -12,6 +12,7 @@ export function SellerRegister() {
   const navigate = useNavigate();
 
   const existingStore = getStoreForUser(user?.id);
+  const [isReapplying, setIsReapplying] = useState(false);
 
   const [formData, setFormData] = useState({
     store_name: '',
@@ -23,6 +24,18 @@ export function SellerRegister() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Pre-fill form if reapplying
+  useEffect(() => {
+    if (existingStore && isReapplying) {
+      setFormData({
+        store_name: existingStore.store_name || '',
+        description: existingStore.description || '',
+        address: existingStore.address || '',
+        phone: existingStore.phone || user?.phone || '',
+      });
+    }
+  }, [existingStore, isReapplying, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +58,10 @@ export function SellerRegister() {
       setLoading(false);
 
       if (res.success) {
-        setSuccessMsg('Pendaftaran toko berhasil dikirim! Permohonan Anda kini menunggu persetujuan dari Admin.');
+        setIsReapplying(false);
+        setSuccessMsg(res.isResubmission 
+          ? 'Pengajuan pendaftaran toko ulang berhasil dikirim! Status telah diubah menjadi Menunggu Persetujuan Admin (Pending).' 
+          : 'Pendaftaran toko berhasil dikirim! Permohonan Anda kini menunggu persetujuan dari Admin.');
       } else {
         setError(res.error || 'Gagal mengirimkan pendaftaran toko.');
       }
@@ -106,6 +122,13 @@ export function SellerRegister() {
         </div>
 
         <div className="p-8">
+          {successMsg && (
+            <div className="mb-6 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm">
+              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
           {!user ? (
             <div className="bg-amber-50 border border-amber-200 text-amber-800 p-6 rounded-xl text-center">
               <AlertCircle className="h-10 w-10 mx-auto text-amber-500 mb-2" />
@@ -115,7 +138,7 @@ export function SellerRegister() {
                 <Button>Masuk ke Akun Anda</Button>
               </Link>
             </div>
-          ) : existingStore ? (
+          ) : existingStore && !isReapplying ? (
             <div className="space-y-6">
               {/* Status Header Alert */}
               {existingStore.status === 'pending' && (
@@ -156,31 +179,49 @@ export function SellerRegister() {
               )}
 
               {existingStore.status === 'rejected' && (
-                <div className="bg-red-50 border border-red-200 text-red-900 p-6 rounded-2xl">
-                  <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                <div className="bg-red-50 border border-red-200 text-red-900 p-6 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-2">
                       <XCircle className="h-6 w-6 text-red-600 flex-shrink-0" />
                       <h3 className="text-lg font-bold">Permohonan Toko Ditolak</h3>
                     </div>
                     {getStatusBadge(existingStore.status)}
                   </div>
-                  <p className="text-sm text-red-700 leading-relaxed mb-4">
-                    Mohon maaf, permohonan pendaftaran toko Anda belum dapat disetujui oleh Administrator saat ini. Silakan hubungi tim dukungan kami untuk informasi lebih lanjut.
+                  <p className="text-sm text-red-700 leading-relaxed">
+                    Mohon maaf, permohonan pendaftaran toko Anda sebelumnya belum memenuhi kriteria atau ditolak oleh Administrator. Jangan berkecil hati! Anda dapat memperbarui data usaha Anda dan mengajukan permohonan pendaftaran toko baru di bawah ini.
                   </p>
-                  <Link to="/contact">
-                    <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
-                      Hubungi Tim Layanan Mitra
+
+                  <div className="p-4 bg-red-100/60 rounded-xl flex items-center justify-between flex-wrap gap-3">
+                    <span className="text-xs text-red-800 font-medium">
+                      Perbaiki informasi nama toko, nomor telepon, atau alamat untuk pengajuan ulang.
+                    </span>
+                    <Button
+                      onClick={() => setIsReapplying(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs h-9 px-4 flex items-center gap-1.5 shadow-sm"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Ajukan Pendaftaran Toko Baru
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               )}
 
               {/* Application Details Summary */}
               <div className="bg-ocean-50/70 border border-ocean-100 rounded-2xl p-6 space-y-4">
-                <h4 className="text-sm font-bold text-ocean-900 uppercase tracking-wider border-b border-ocean-100 pb-2">
-                  Detail Permohonan Pendaftaran Toko
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-ocean-900 uppercase tracking-wider">
+                    Detail Permohonan Pendaftaran Toko
+                  </h4>
+                  {existingStore.status === 'rejected' && (
+                    <button
+                      onClick={() => setIsReapplying(true)}
+                      className="text-xs text-ocean-600 hover:text-ocean-800 font-semibold underline"
+                    >
+                      Edit &amp; Ajukan Ulang
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-t border-ocean-100 pt-3">
                   <div>
                     <span className="text-ocean-500 block text-xs">Nama Toko</span>
                     <span className="font-semibold text-ocean-900">{existingStore.store_name}</span>
@@ -206,8 +247,25 @@ export function SellerRegister() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
+              {isReapplying && (
+                <div className="bg-ocean-50 border border-ocean-200 text-ocean-900 p-4 rounded-xl text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4 text-ocean-600 flex-shrink-0" />
+                    <span>Anda sedang mengajukan <strong>pendaftaran toko ulang</strong> setelah status ditolak.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsReapplying(false)}
+                    className="text-xs text-ocean-600 hover:text-ocean-800 font-semibold ml-2 underline"
+                  >
+                    Batal
+                  </button>
+                </div>
+              )}
+
               {error && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm">
+
                   <AlertCircle className="h-5 w-5 flex-shrink-0" />
                   <span>{error}</span>
                 </div>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { DollarSign, ShoppingBag, Package, AlertTriangle, Plus, ClipboardList, TrendingUp } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, AlertTriangle, Plus, ClipboardList, TrendingUp, ArrowLeft } from 'lucide-react';
 
 // Status badge config
 const statusBadge = {
@@ -64,7 +64,13 @@ export function Dashboard() {
           <p className="text-ocean-500 text-sm">Selamat datang kembali di Admin Panel JaringLokal.</p>
         </div>
         {/* Quick Actions */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm bg-sand-500 hover:bg-sand-400 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm"
+          >
+            <ArrowLeft className="h-4 w-4" /> Ke Dashboard Utama
+          </Link>
           <Link
             to="/admin/products"
             className="inline-flex items-center gap-1.5 text-sm bg-ocean-600 text-white px-4 py-2 rounded-lg hover:bg-ocean-700 transition-colors font-medium shadow-sm"
