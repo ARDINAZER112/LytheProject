@@ -4,196 +4,278 @@ import { logActivity } from '../lib/activityLogger';
 
 const AuthContext = createContext();
 
-const initialAdmin = {
-  id: 1,
-  name: 'Admin JaringLokal',
-  email: 'admin@jaringlokal.com',
-  password: 'admin123',
-  role: 'admin',
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: ambil profil user dari public.users berdasarkan auth.users id
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchProfile(authUserId) {
+  if (!authUserId) return null;
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, name, email, phone, role')
+    .eq('id', authUserId)
+    .maybeSingle();
 
-const getSavedUser = () => {
-  try {
-    const localUser = localStorage.getItem('jaringlokal_user');
-    if (localUser && localUser !== 'undefined') {
-      return JSON.parse(localUser);
-    }
-    const sessionUser = sessionStorage.getItem('jaringlokal_user');
-    if (sessionUser && sessionUser !== 'undefined') {
-      return JSON.parse(sessionUser);
-    }
-  } catch (e) {
-    console.error('Failed to parse saved user from storage:', e);
+  if (error) {
+    console.warn('[AuthContext] fetchProfile error:', error.message);
+    return null;
   }
-  return null;
-};
+  return data;
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AuthProvider — menggunakan Supabase Auth resmi (bcrypt otomatis)
+// ─────────────────────────────────────────────────────────────────────────────
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(getSavedUser);
+  const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Sync state dari Supabase Auth session (termasuk setelah page refresh)
   useEffect(() => {
-    // Synchronize initial state and end auth loading flag
-    const currentUser = getSavedUser();
-    setUser(currentUser);
-    setAuthLoading(false);
+    // Ambil session awal
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        setUser(profile || { id: session.user.id, email: session.user.email, role: 'customer' });
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+
+    // Listen perubahan auth state (login, logout, token refresh, password recovery)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session?.user) {
+            const profile = await fetchProfile(session.user.id);
+            setUser(profile || { id: session.user.id, email: session.user.email, role: 'customer' });
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+        // PASSWORD_RECOVERY ditangani di ResetPassword.jsx
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const saveUserSession = (userData, rememberMe = true) => {
-    setUser(userData);
-    if (rememberMe) {
-      localStorage.setItem('jaringlokal_user', JSON.stringify(userData));
-      localStorage.setItem('jaringlokal_remembered_email', userData.email);
-      sessionStorage.removeItem('jaringlokal_user');
-    } else {
-      sessionStorage.setItem('jaringlokal_user', JSON.stringify(userData));
-      localStorage.removeItem('jaringlokal_user');
-    }
-  };
-
+  // ───────────────────────────────────────────────────────────────
+  // LOGIN — Supabase Auth signInWithPassword (bcrypt otomatis)
+  // captchaToken: reCAPTCHA v3 token dari frontend (opsional,
+  // Supabase tidak memvalidasinya di signInWithPassword, dipakai
+  // sebagai sinyal client-side saja untuk keperluan logging).
+  // ───────────────────────────────────────────────────────────────
   const login = async (email, password, rememberMe = true) => {
     try {
-      // 1. Try querying PostgreSQL Supabase 'users' table
-      const { data: dbUser, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       if (error) {
-        console.warn('Database query error during login, checking local fallback:', error.message);
+        // Pesan error Supabase → terjemahkan ke Bahasa Indonesia
+        const msg = mapAuthError(error.message);
+        return { success: false, error: msg };
       }
 
-      if (dbUser) {
-        if (dbUser.password === password) {
-          const loggedUser = {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            phone: dbUser.phone || '',
-            role: dbUser.role || 'customer',
-          };
-          saveUserSession(loggedUser, rememberMe);
-          // Log live IP address & location data upon login
-          logActivity({ action: 'login', userId: loggedUser.id, userName: loggedUser.name });
-          return { success: true, user: loggedUser };
-        } else {
-          return { success: false, error: 'Kata sandi salah. Silakan periksa kembali.' };
-        }
-      }
-
-      // If user not found in database, check fallback default admin
-      if (email === initialAdmin.email && password === initialAdmin.password) {
-        const adminData = { id: 1, name: initialAdmin.name, email: initialAdmin.email, role: 'admin' };
-        saveUserSession(adminData, rememberMe);
-        // Log live IP address & location data upon login
-        logActivity({ action: 'login', userId: adminData.id, userName: adminData.name });
-        return { success: true, user: adminData };
-      }
-
-      // If account does not exist in PostgreSQL database
-      return { 
-        success: false, 
-        error: 'Akun tidak terdaftar. Silakan buat akun terlebih dahulu melalui halaman Daftar.' 
+      const profile = await fetchProfile(data.user.id);
+      const loggedUser = profile || {
+        id: data.user.id,
+        email: data.user.email,
+        role: 'customer',
       };
 
+      // Simpan email untuk "Remember Me" (Supabase session sudah persist otomatis)
+      if (rememberMe) {
+        localStorage.setItem('jaringlokal_remembered_email', email);
+      }
+
+      // Log aktivitas
+      logActivity({ action: 'login', userId: loggedUser.id, userName: loggedUser.name || email });
+
+      return { success: true, user: loggedUser };
     } catch (err) {
-      console.error('Login process error:', err);
+      console.error('[AuthContext] login error:', err);
       return { success: false, error: 'Terjadi kesalahan sistem. Silakan coba lagi.' };
     }
   };
 
-  const register = async (name, email, password, phone = '', rememberMe = true) => {
+  // ───────────────────────────────────────────────────────────────
+  // REGISTER — Supabase Auth signUp (password di-hash bcrypt otomatis)
+  // Profil user (name, phone, role) disimpan ke public.users via
+  // database trigger handle_new_user() yang dipasang di SQL schema.
+  // ───────────────────────────────────────────────────────────────
+  const register = async (name, email, password, phone = '') => {
     try {
-      // 1. Check if email already exists in PostgreSQL
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            // user_metadata — dipakai oleh trigger untuk isi public.users
+            name,
+            phone,
+            role: 'customer',
+          },
+        },
+      });
 
-      if (existingUser) {
-        return { success: false, error: 'Email ini sudah terdaftar. Silakan masuk (login).' };
+      if (error) {
+        return { success: false, error: mapAuthError(error.message) };
       }
 
-      // 2. Insert new user into PostgreSQL 'users' table
-      const newUserObj = {
+      // signUp berhasil — user mungkin perlu konfirmasi email
+      // Jika Supabase email confirmation dimatikan, session langsung aktif
+      const authUser = data.user;
+      if (!authUser) {
+        return {
+          success: false,
+          error: 'Pendaftaran gagal. Pastikan email valid dan coba lagi.',
+        };
+      }
+
+      // Upsert profil ke public.users (trigger handle_new_user juga akan mencoba ini,
+      // tapi kita lakukan manual untuk memastikan name & phone langsung ada)
+      await supabase.from('users').upsert({
+        id: authUser.id,
         name,
-        email,
-        password,
+        email: authUser.email,
         phone,
         role: 'customer',
-      };
+      }, { onConflict: 'id' });
 
-      const { data: insertedUser, error: insertErr } = await supabase
-        .from('users')
-        .insert([newUserObj])
-        .select()
-        .single();
+      const newUser = { id: authUser.id, name, email: authUser.email, phone, role: 'customer' };
+      logActivity({ action: 'register', userId: newUser.id, userName: name });
 
-      if (insertErr) {
-        console.error('Error inserting user to Supabase:', insertErr);
-        // Fallback local save if database table is not initialized yet
-        const localUser = { id: Date.now(), name, email, phone, role: 'customer' };
-        saveUserSession(localUser, rememberMe);
-        logActivity({ action: 'register', userId: localUser.id, userName: localUser.name });
-        return { success: true, user: localUser };
-      }
-
-      const registeredUser = {
-        id: insertedUser.id,
-        name: insertedUser.name,
-        email: insertedUser.email,
-        phone: insertedUser.phone || phone,
-        role: insertedUser.role,
-      };
-
-      saveUserSession(registeredUser, rememberMe);
-      // Log live IP address & location data upon registration
-      logActivity({ action: 'register', userId: registeredUser.id, userName: registeredUser.name });
-      return { success: true, user: registeredUser };
-
+      return { success: true, user: newUser };
     } catch (err) {
-      console.error('Register process error:', err);
+      console.error('[AuthContext] register error:', err);
       return { success: false, error: 'Gagal mendaftarkan akun. Silakan coba lagi.' };
     }
   };
 
-  const updateUserRole = async (newRole) => {
-    if (!user) return;
-
-    const updatedUser = { ...user, role: newRole };
-    setUser(updatedUser);
-    
-    if (localStorage.getItem('jaringlokal_user')) {
-      localStorage.setItem('jaringlokal_user', JSON.stringify(updatedUser));
-    } else if (sessionStorage.getItem('jaringlokal_user')) {
-      sessionStorage.setItem('jaringlokal_user', JSON.stringify(updatedUser));
-    }
-
+  // ───────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — Supabase resetPasswordForEmail
+  // captchaToken: Cloudflare Turnstile token (Supabase mendukung natively)
+  // ───────────────────────────────────────────────────────────────
+  const requestPasswordReset = async (email, captchaToken) => {
     try {
-      if (user.id) {
-        await supabase
-          .from('users')
-          .update({ role: newRole })
-          .eq('id', user.id);
+      const options = {
+        redirectTo: `${window.location.origin}/reset-password`,
+      };
+
+      // Supabase Auth mendukung Turnstile captchaToken di sini
+      if (captchaToken) {
+        options.captchaToken = captchaToken;
       }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        options
+      );
+
+      if (error) {
+        return { success: false, error: mapAuthError(error.message) };
+      }
+
+      return { success: true };
     } catch (err) {
-      console.error('Failed to update user role in database:', err);
+      console.error('[AuthContext] requestPasswordReset error:', err);
+      return { success: false, error: 'Terjadi kesalahan saat meminta reset kata sandi.' };
     }
   };
 
-  const logout = () => {
+  // ───────────────────────────────────────────────────────────────
+  // UPDATE PASSWORD — Supabase updateUser (dipakai di ResetPassword.jsx)
+  // ───────────────────────────────────────────────────────────────
+  const updatePassword = async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        return { success: false, error: mapAuthError(error.message) };
+      }
+      return { success: true };
+    } catch (err) {
+      console.error('[AuthContext] updatePassword error:', err);
+      return { success: false, error: 'Gagal memperbarui kata sandi.' };
+    }
+  };
+
+  // ───────────────────────────────────────────────────────────────
+  // UPDATE ROLE — update public.users (admin operation)
+  // ───────────────────────────────────────────────────────────────
+  const updateUserRole = async (newRole) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: newRole })
+        .eq('id', user.id);
+
+      if (!error) {
+        setUser((prev) => ({ ...prev, role: newRole }));
+      }
+    } catch (err) {
+      console.error('[AuthContext] updateUserRole error:', err);
+    }
+  };
+
+  // ───────────────────────────────────────────────────────────────
+  // LOGOUT — Supabase signOut
+  // ───────────────────────────────────────────────────────────────
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    // Bersihkan sisa storage lama (backwards compat)
     localStorage.removeItem('jaringlokal_user');
     sessionStorage.removeItem('jaringlokal_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, authLoading, login, register, logout, updateUserRole }}>
+    <AuthContext.Provider value={{
+      user,
+      authLoading,
+      login,
+      register,
+      logout,
+      updateUserRole,
+      requestPasswordReset,
+      updatePassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: terjemahkan pesan error Supabase Auth ke Bahasa Indonesia
+// ─────────────────────────────────────────────────────────────────────────────
+function mapAuthError(message = '') {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login credentials') || m.includes('invalid credentials')) {
+    return 'Email atau kata sandi salah. Silakan periksa kembali.';
+  }
+  if (m.includes('user already registered') || m.includes('already been registered')) {
+    return 'Email ini sudah terdaftar. Silakan masuk (login).';
+  }
+  if (m.includes('email not confirmed')) {
+    return 'Email belum dikonfirmasi. Silakan cek kotak masuk email Anda.';
+  }
+  if (m.includes('password should be at least')) {
+    return 'Kata sandi minimal 6 karakter.';
+  }
+  if (m.includes('rate limit') || m.includes('too many requests')) {
+    return 'Terlalu banyak percobaan. Silakan tunggu beberapa saat dan coba lagi.';
+  }
+  if (m.includes('captcha')) {
+    return 'Verifikasi CAPTCHA gagal. Silakan coba lagi.';
+  }
+  if (m.includes('network') || m.includes('fetch')) {
+    return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+  }
+  // Fallback: kembalikan pesan asli
+  return message || 'Terjadi kesalahan. Silakan coba lagi.';
+}
