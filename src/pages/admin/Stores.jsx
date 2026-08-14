@@ -13,8 +13,8 @@ export function Stores() {
 
   const filteredStores = stores.filter(store => {
     const matchesSearch = store.store_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          store.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          store.address?.toLowerCase().includes(searchTerm.toLowerCase());
+      store.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      store.address?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || store.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -24,14 +24,25 @@ export function Stores() {
   const rejectedCount = stores.filter(s => s.status === 'rejected').length;
 
   const handleApprove = async (storeId, storeName) => {
+    const target = stores.find(s => s.id === storeId);
+    if (target?.status === 'rejected') {
+      alert(`Permohonan toko "${storeName}" telah berstatus Ditolak (Rejected). Status yang telah ditolak tidak dapat diubah menjadi disetujui secara langsung. Pengguna harus mengajukan pendaftaran baru.`);
+      return;
+    }
     if (window.confirm(`Setujui permohonan toko "${storeName}"? Pengguna akan diberikan hak akses penjual.`)) {
-      await updateStoreStatus(storeId, 'approved');
+      const res = await updateStoreStatus(storeId, 'approved');
+      if (res && res.error) {
+        alert(res.error);
+      }
     }
   };
 
   const handleReject = async (storeId, storeName) => {
-    if (window.confirm(`Tolak permohonan toko "${storeName}"?`)) {
-      await updateStoreStatus(storeId, 'rejected');
+    if (window.confirm(`Tolak permohonan toko "${storeName}"? Catatan: Setelah ditolak, status terkunci dan pengguna harus mengajukan permohonan baru jika ingin mendaftar kembali.`)) {
+      const res = await updateStoreStatus(storeId, 'rejected');
+      if (res && res.error) {
+        alert(res.error);
+      }
     }
   };
 
@@ -45,9 +56,12 @@ export function Stores() {
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-full font-bold">
-            <XCircle className="h-3.5 w-3.5 text-red-600" /> Ditolak
-          </span>
+          <div className="inline-flex flex-col">
+            <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-xs px-2.5 py-1 rounded-full font-bold">
+              <XCircle className="h-3.5 w-3.5 text-red-600" /> Ditolak
+            </span>
+            <span className="text-[10px] text-red-600 font-medium mt-0.5">Terkunci (Perlu Pengajuan Baru)</span>
+          </div>
         );
       case 'pending':
       default:
@@ -171,17 +185,28 @@ export function Stores() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {store.status !== 'approved' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleApprove(store.id, store.store_name)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Setujui
-                        </Button>
+                      {store.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(store.id, store.store_name)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 shadow-sm"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                            Setujui
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReject(store.id, store.store_name)}
+                            className="border-red-300 text-red-700 hover:bg-red-50 text-xs h-8 px-3"
+                          >
+                            <XCircle className="h-3.5 w-3.5 mr-1" />
+                            Tolak
+                          </Button>
+                        </>
                       )}
-                      {store.status !== 'rejected' && (
+                      {store.status === 'approved' && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -189,8 +214,13 @@ export function Stores() {
                           className="border-red-300 text-red-700 hover:bg-red-50 text-xs h-8 px-3"
                         >
                           <XCircle className="h-3.5 w-3.5 mr-1" />
-                          Tolak
+                          Tolak / Cabut Izin
                         </Button>
+                      )}
+                      {store.status === 'rejected' && (
+                        <span className="text-xs text-ocean-400 font-medium italic bg-ocean-50 px-2.5 py-1 rounded-lg border border-ocean-100">
+                          Terkunci (Menunggu Pengajuan Baru)
+                        </span>
                       )}
                     </div>
                   </TableCell>

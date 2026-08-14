@@ -25,7 +25,6 @@ export function UserLayout() {
     { to: '/about',      label: 'Tentang Kami',     end: false },
   ] : [
     { to: '/',          label: 'Beranda',          end: true },
-    { to: '/support',    label: 'Bantuan & Tiket',  end: false },
     { to: '/statistics', label: 'Statistik',        end: false },
     { to: '/contact',    label: 'Kontak Mitra',     end: false },
     { to: '/about',      label: 'Tentang Kami',     end: false },
@@ -61,11 +60,23 @@ export function UserLayout() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8">
-            {navLinks.map(({ to, label, end }) => (
-              <NavLink key={to} to={to} end={end} className={linkClass}>
-                {label}
-              </NavLink>
-            ))}
+            {navLinks.map(({ to, label, end, external }) => 
+              external ? (
+                <a
+                  key={to}
+                  href={to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-ocean-800 hover:text-ocean-500 transition-colors"
+                >
+                  {label}
+                </a>
+              ) : (
+                <NavLink key={to} to={to} end={end} className={linkClass}>
+                  {label}
+                </NavLink>
+              )
+            )}
           </nav>
 
           {/* Right actions */}
@@ -167,11 +178,24 @@ export function UserLayout() {
         {mobileOpen && (
           <div className="md:hidden bg-white border-t border-ocean-100 px-4 pb-4 animate-slide-down">
             <nav className="flex flex-col gap-1 pt-2">
-              {navLinks.map(({ to, label, end }) => (
-                <NavLink key={to} to={to} end={end} className={mobileLinkClass} onClick={() => setMobileOpen(false)}>
-                  {label}
-                </NavLink>
-              ))}
+              {navLinks.map(({ to, label, end, external }) => 
+                external ? (
+                  <a
+                    key={to}
+                    href={to}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-4 py-3 rounded-lg text-base font-medium text-ocean-700 hover:bg-ocean-50 transition-colors"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {label}
+                  </a>
+                ) : (
+                  <NavLink key={to} to={to} end={end} className={mobileLinkClass} onClick={() => setMobileOpen(false)}>
+                    {label}
+                  </NavLink>
+                )
+              )}
             </nav>
             <div className="mt-3 pt-3 border-t border-ocean-100 space-y-2">
               {userStore?.status === 'approved' ? (
@@ -278,8 +302,16 @@ export function UserLayout() {
           <div>
             <h4 className="font-semibold mb-4 text-sand-400 text-sm uppercase tracking-wider">Tautan</h4>
             <ul className="space-y-2 text-sm text-ocean-300">
-              {navLinks.map(({ to, label }) => (
-                <li key={to}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              {navLinks.map(({ to, label, external }) => (
+                <li key={to}>
+                  {external ? (
+                    <a href={to} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                      {label}
+                    </a>
+                  ) : (
+                    <Link to={to} className="hover:text-white transition-colors">{label}</Link>
+                  )}
+                </li>
               ))}
             </ul>
           </div>
@@ -289,6 +321,16 @@ export function UserLayout() {
               <li>Jl. Pesisir Utara No.45, Tuban</li>
               <li>halo@jaringlokal.id</li>
               <li>+62 812 3456 7890</li>
+              <li className="pt-1">
+                <a
+                  href="https://wa.me/6281234567890?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-emerald-700/40 hover:bg-emerald-600/50 text-emerald-300 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-xs font-semibold transition-colors"
+                >
+                  <span>💬 Bantuan WhatsApp Admin</span>
+                </a>
+              </li>
             </ul>
           </div>
         </div>

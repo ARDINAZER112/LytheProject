@@ -20,12 +20,13 @@ export const getVisitorDeviceId = () => {
 
 export const DataProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
-  const [stores, setStores]     = useState([]);
-  const [orders, setOrders]     = useState([]);
-  const [cart, setCart]         = useState([]);
-  const [tickets, setTickets]   = useState([]);
+  const [stores, setStores] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [orderChats, setOrderChats] = useState({});
   const [userLogs, setUserLogs] = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [visitorCount, setVisitorCount] = useState(() => {
     const saved = localStorage.getItem('jaringlokal_visitor_count');
     return saved ? parseInt(saved, 10) : 18450;
@@ -42,7 +43,7 @@ export const DataProvider = ({ children }) => {
   // Process automatic updates for support tickets with no activity for 1 week (7 days)
   const processAutoUpdateInactiveTickets = async (ticketList) => {
     if (!Array.isArray(ticketList) || ticketList.length === 0) return ticketList;
-    
+
     const now = Date.now();
     let hasChanges = false;
 
@@ -95,20 +96,44 @@ export const DataProvider = ({ children }) => {
     return updatedList;
   };
 
-  // Load Support Tickets from Supabase with 1-week inactivity auto-update
+  // Load Support Tickets from Supabase with 1-week inactivity auto-update and account persistence
   const loadTickets = async () => {
     try {
-      const { data, error } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
-      if (!error && Array.isArray(data)) {
-        const processed = await processAutoUpdateInactiveTickets(data);
-        setTickets(processed);
-        localStorage.setItem('jaringlokal_tickets', JSON.stringify(processed));
-      } else {
-        const saved = localStorage.getItem('jaringlokal_tickets');
-        const parsed = saved ? JSON.parse(saved) : [];
-        const processed = await processAutoUpdateInactiveTickets(parsed);
-        setTickets(processed);
+      const savedGlobal = localStorage.getItem('jaringlokal_tickets');
+      const parsedGlobal = savedGlobal ? JSON.parse(savedGlobal) : [];
+      let savedUser = [];
+      if (user?.id) {
+        try {
+          const uRaw = localStorage.getItem(`jaringlokal_user_tickets_${user.id}`);
+          if (uRaw) savedUser = JSON.parse(uRaw);
+        } catch (e) {
+          savedUser = [];
+        }
       }
+
+      const { data, error } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
+      let remoteData = Array.isArray(data) && !error ? data : [];
+
+      const ticketMap = new Map();
+      [...parsedGlobal, ...savedUser, ...remoteData].forEach(t => {
+        if (t && t.ticket_code) {
+          if (!ticketMap.has(t.ticket_code)) {
+            ticketMap.set(t.ticket_code, t);
+          } else {
+            const existing = ticketMap.get(t.ticket_code);
+            const exMsgs = Array.isArray(existing.messages) ? existing.messages.length : 0;
+            const tMsgs = Array.isArray(t.messages) ? t.messages.length : 0;
+            if (tMsgs >= exMsgs) {
+              ticketMap.set(t.ticket_code, { ...existing, ...t });
+            }
+          }
+        }
+      });
+
+      const mergedList = Array.from(ticketMap.values()).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      const processed = await processAutoUpdateInactiveTickets(mergedList);
+      setTickets(processed);
+      localStorage.setItem('jaringlokal_tickets', JSON.stringify(processed));
     } catch {
       const saved = localStorage.getItem('jaringlokal_tickets');
       const parsed = saved ? JSON.parse(saved) : [];
@@ -177,6 +202,30 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // Load Order Chats for a specific order
+  const loadOrderChats = async (orderId) => {
+    if (!orderId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('order_chats')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: true });
+
+      if (!error && Array.isArray(data)) {
+        setOrderChats(prev => ({ ...prev, [orderId]: data }));
+        localStorage.setItem(`jaringlokal_order_chat_${orderId}`, JSON.stringify(data));
+        return data;
+      }
+    } catch (e) {
+      console.warn('Failed to load order chats from Supabase:', e);
+    }
+    const saved = localStorage.getItem(`jaringlokal_order_chat_${orderId}`);
+    const parsed = saved ? JSON.parse(saved) : [];
+    setOrderChats(prev => ({ ...prev, [orderId]: parsed }));
+    return parsed;
+  };
+
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
@@ -229,9 +278,29 @@ export const DataProvider = ({ children }) => {
           };
           setOrders(prev => [formatted, ...prev.filter(o => o.id !== payload.new.id)]);
         } else if (payload.eventType === 'UPDATE') {
-          setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
+          setOrders(prev => prev.map(o => o.id === payload.new.id ? {
+            ...o,
+            ...payload.new,
+            userName: payload.new.user_name || o.userName,
+            totalAmount: payload.new.total_amount || o.totalAmount,
+            status: payload.new.status || o.status,
+            escrow_status: payload.new.escrow_status || o.escrow_status,
+          } : o));
         } else if (payload.eventType === 'DELETE') {
           setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_chats' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const msg = payload.new;
+          const orderId = msg.order_id;
+          setOrderChats(prev => {
+            const current = prev[orderId] || [];
+            if (current.some(m => m.id === msg.id)) return prev;
+            const updated = [...current, msg];
+            localStorage.setItem(`jaringlokal_order_chat_${orderId}`, JSON.stringify(updated));
+            return { ...prev, [orderId]: updated };
+          });
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_logs' }, (payload) => {
@@ -269,23 +338,49 @@ export const DataProvider = ({ children }) => {
   const registerStore = async (storeDetails) => {
     if (!user) return { success: false, error: 'Silakan masuk (login) terlebih dahulu.' };
 
-    const newStore = {
+    const existingStore = stores.find(s => String(s.user_id) === String(user.id));
+
+    const newStoreData = {
       user_id: user.id || Date.now(),
       store_name: storeDetails.store_name,
       description: storeDetails.description || '',
       address: storeDetails.address || '',
       phone: storeDetails.phone || '',
-      status: 'pending', // Pending admin manual approval in database
+      status: 'pending', // Re-submitted or fresh application resets to pending
     };
 
-    // Optimistic UI update
-    const tempStore = { ...newStore, id: Date.now() };
+    if (existingStore) {
+      // Re-application: update existing store record to pending status
+      const updatedStores = stores.map(s => String(s.user_id) === String(user.id) ? { ...s, ...newStoreData, status: 'pending' } : s);
+      setStores(updatedStores);
+      localStorage.setItem('jaringlokal_stores', JSON.stringify(updatedStores));
+
+      try {
+        const { data, error } = await supabase
+          .from('stores')
+          .update({ ...newStoreData, status: 'pending' })
+          .eq('id', existingStore.id)
+          .select()
+          .single();
+
+        if (!error && data) {
+          loadStores();
+          return { success: true, store: data, isResubmission: true };
+        }
+      } catch (err) {
+        console.error('Failed to update re-submitted store in Supabase:', err);
+      }
+      return { success: true, store: { ...existingStore, ...newStoreData, status: 'pending' }, isResubmission: true };
+    }
+
+    // New store application
+    const tempStore = { ...newStoreData, id: Date.now() };
     const updatedStores = [...stores, tempStore];
     setStores(updatedStores);
     localStorage.setItem('jaringlokal_stores', JSON.stringify(updatedStores));
 
     try {
-      const { data, error } = await supabase.from('stores').insert([newStore]).select().single();
+      const { data, error } = await supabase.from('stores').insert([newStoreData]).select().single();
       if (!error && data) {
         tempStore.id = data.id;
         loadStores();
@@ -294,15 +389,24 @@ export const DataProvider = ({ children }) => {
       console.error('Failed to insert store to Supabase:', err);
     }
 
-    return { success: true, store: tempStore };
+    return { success: true, store: tempStore, isResubmission: false };
   };
 
   const updateStoreStatus = async (storeId, newStatus) => {
+    const targetStore = stores.find(s => s.id === storeId);
+    if (!targetStore) return { success: false, error: 'Data toko tidak ditemukan.' };
+
+    // Enforcement: Once a status is set to "rejected", it cannot be changed to "approved" directly
+    if (targetStore.status === 'rejected' && newStatus === 'approved') {
+      return {
+        success: false,
+        error: 'Permohonan toko yang telah berstatus Ditolak (Rejected) tidak dapat langsung disetujui. Pengguna harus mengajukan pendaftaran toko baru terlebih dahulu.'
+      };
+    }
+
     const updatedStores = stores.map(s => s.id === storeId ? { ...s, status: newStatus } : s);
     setStores(updatedStores);
     localStorage.setItem('jaringlokal_stores', JSON.stringify(updatedStores));
-
-    const targetStore = stores.find(s => s.id === storeId);
 
     try {
       await supabase.from('stores').update({ status: newStatus }).eq('id', storeId);
@@ -310,21 +414,23 @@ export const DataProvider = ({ children }) => {
         const newRole = newStatus === 'approved' ? 'seller' : 'customer';
         await supabase.from('users').update({ role: newRole }).eq('id', targetStore.user_id);
       }
+      return { success: true };
     } catch (err) {
       console.error('Failed to update store status in Supabase:', err);
+      return { success: false, error: err.message };
     }
   };
 
   // Helper to get current user's store
   const getStoreForUser = (userId) => {
     if (!userId) return null;
-    return stores.find(s => s.user_id === userId || s.user_id === Number(userId)) || null;
+    return stores.find(s => String(s.user_id) === String(userId)) || null;
   };
 
   // ── Product CRUD Operations ──────────────────────────────────
   const addProduct = async (product) => {
     const userStore = getStoreForUser(user?.id);
-    const newProduct = { 
+    const newProduct = {
       ...product,
       store_id: product.store_id || (userStore ? userStore.id : null),
       store_name: product.store_name || (userStore ? userStore.store_name : 'Toko Nelayan Bahari Pak Bambang'),
@@ -404,34 +510,48 @@ export const DataProvider = ({ children }) => {
     localStorage.removeItem('jaringlokal_cart');
   };
 
-  // ── Order Operations ────────────────────────────────────────
+  // ── Order & Escrow Operations ──────────────────────────────
   const checkout = async (userId, userName) => {
-    if (cart.length === 0) return false;
+    if (cart.length === 0) return { success: false, error: 'Keranjang kosong.' };
     const purchasedItems = [...cart];
-    const totalAmount = purchasedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    
+    const subtotal = purchasedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const shippingFee = 15000;
+    const totalAmount = subtotal + shippingFee;
+
+    // Detect store details from items in cart
+    const firstItem = purchasedItems[0];
+    const storeId = firstItem?.store_id || null;
+    const storeName = firstItem?.store_name || 'Toko Mitra Nelayan';
+    const storeObj = stores.find(s => s.id === storeId || s.store_name === storeName);
+    const sellerId = storeObj?.user_id || null;
+
     const dbOrder = {
-      user_name: userName || 'Pelanggan',
+      user_id: userId || null,
+      user_name: userName || user?.name || 'Pelanggan',
+      seller_id: sellerId,
+      store_id: storeId,
+      store_name: storeName,
       total_amount: totalAmount,
-      status: 'Menunggu Konfirmasi',
+      shipping_fee: shippingFee,
+      status: 'Menunggu Pembayaran Escrow',
+      escrow_status: 'pending_payment',
       items: purchasedItems,
     };
 
+    const tempOrderId = Date.now();
     const tempOrder = {
-      id: Date.now(),
-      userId,
+      ...dbOrder,
+      id: tempOrderId,
       userName: dbOrder.user_name,
-      items: purchasedItems,
       totalAmount,
-      status: dbOrder.status,
       date: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     };
 
     setOrders(prev => [tempOrder, ...prev]);
     clearCart();
 
     // ── 1. AUTOMATIC PRODUCT STOCK REDUCTION ─────────────────────
-    // Deduct stock in local state immediately
     setProducts(prevProducts => {
       const updatedList = prevProducts.map(prod => {
         const itemMatch = purchasedItems.find(it => String(it.id) === String(prod.id));
@@ -445,7 +565,6 @@ export const DataProvider = ({ children }) => {
       return updatedList;
     });
 
-    // Deduct stock in PostgreSQL database
     purchasedItems.forEach(async (item) => {
       try {
         const matchingProd = products.find(p => String(p.id) === String(item.id));
@@ -470,15 +589,41 @@ export const DataProvider = ({ children }) => {
       },
     }).then(() => loadLogs());
 
+    let finalOrder = tempOrder;
+
     try {
-      const { data, error } = await supabase.from('orders').insert([dbOrder]).select();
+      const { data, error } = await supabase.from('orders').insert([dbOrder]).select().single();
       if (!error && data) {
+        finalOrder = {
+          ...data,
+          userName: data.user_name,
+          totalAmount: data.total_amount,
+          date: data.created_at,
+        };
+        setOrders(prev => [finalOrder, ...prev.filter(o => o.id !== tempOrderId)]);
         loadOrders();
       }
     } catch (err) {
       console.error('Failed to submit order to Supabase:', err);
     }
-    return true;
+
+    // ── 3. AUTOMATIC INITIAL ESCROW SYSTEM MESSAGE ────────────────
+    const welcomeMsgText = `🛡️ Transaksi Rekening Bersama (Escrow) JaringLokal dimulai untuk Pesanan #${finalOrder.id}.
+• Total Pembayaran: Rp ${totalAmount.toLocaleString('id-ID')}
+• Toko Penjual: ${storeName}
+• Pembeli: ${dbOrder.user_name}
+
+Silakan Pembeli melakukan konfirmasi pembayaran ke Rekening Bersama Admin untuk diproses secara aman.`;
+
+    sendOrderChatMessage({
+      orderId: finalOrder.id,
+      text: welcomeMsgText,
+      senderRole: 'system',
+      senderName: 'Sistem Escrow JaringLokal',
+      senderId: null,
+    });
+
+    return { success: true, order: finalOrder };
   };
 
   const updateOrderStatus = async (id, status) => {
@@ -490,6 +635,78 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const updateOrderEscrowStatus = async (orderId, newStatus, newEscrowStatus, systemNote = null) => {
+    setOrders(prev => prev.map(o => o.id === Number(orderId) || String(o.id) === String(orderId) ? {
+      ...o,
+      status: newStatus || o.status,
+      escrow_status: newEscrowStatus || o.escrow_status,
+      updated_at: new Date().toISOString()
+    } : o));
+
+    try {
+      const updatePayload = { updated_at: new Date().toISOString() };
+      if (newStatus) updatePayload.status = newStatus;
+      if (newEscrowStatus) updatePayload.escrow_status = newEscrowStatus;
+      await supabase.from('orders').update(updatePayload).eq('id', orderId);
+    } catch (err) {
+      console.error('Failed to update order escrow status in Supabase:', err);
+    }
+
+    if (systemNote) {
+      await sendOrderChatMessage({
+        orderId,
+        text: systemNote,
+        senderRole: 'system',
+        senderName: 'Sistem Escrow JaringLokal',
+        senderId: null,
+      });
+    }
+  };
+
+  // ── Escrow Multi-Party Order Chat Operations ────────────────
+  const sendOrderChatMessage = async ({ orderId, text, senderRole, senderName, senderId }) => {
+    if (!orderId || !text?.trim()) return { success: false };
+
+    const resolvedRole = senderRole || (user?.role === 'admin' ? 'admin' : user?.role === 'seller' ? 'seller' : 'buyer');
+    const resolvedName = senderName || user?.name || (resolvedRole === 'admin' ? 'Admin Escrow' : resolvedRole === 'seller' ? 'Penjual' : 'Pembeli');
+
+    const newMsg = {
+      order_id: Number(orderId),
+      sender_id: senderId || user?.id || null,
+      sender_name: resolvedName,
+      sender_role: resolvedRole,
+      text: text.trim(),
+      created_at: new Date().toISOString(),
+    };
+
+    const tempMsg = { ...newMsg, id: Date.now() };
+
+    // Update local state optimistically
+    setOrderChats(prev => {
+      const current = prev[orderId] || [];
+      const updated = [...current, tempMsg];
+      localStorage.setItem(`jaringlokal_order_chat_${orderId}`, JSON.stringify(updated));
+      return { ...prev, [orderId]: updated };
+    });
+
+    try {
+      const { data, error } = await supabase.from('order_chats').insert([newMsg]).select().single();
+      if (!error && data) {
+        setOrderChats(prev => {
+          const current = prev[orderId] || [];
+          const updated = current.map(m => m.id === tempMsg.id ? data : m);
+          localStorage.setItem(`jaringlokal_order_chat_${orderId}`, JSON.stringify(updated));
+          return { ...prev, [orderId]: updated };
+        });
+        return { success: true, message: data };
+      }
+    } catch (err) {
+      console.error('Failed to send order chat message to Supabase:', err);
+    }
+
+    return { success: true, message: tempMsg };
+  };
+
   // ── Support Ticket Operations ──────────────────────────────
   const createTicket = async (ticketData) => {
     const randomNum = Math.floor(10000 + Math.random() * 90000);
@@ -498,11 +715,12 @@ export const DataProvider = ({ children }) => {
     const visitorDevId = getVisitorDeviceId();
     const geoInfo = await getClientIpAndLocation().catch(() => ({ ip_address: '180.252.124.58' }));
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    
+
     const newTicket = {
       ticket_code: `TCK-${randomNum}`,
-      name: ticketData.name || 'Pengunjung',
-      email: ticketData.email || 'user@jaringlokal.com',
+      user_id: user?.id || ticketData.user_id || null,
+      name: ticketData.name || user?.name || 'Pengguna',
+      email: ticketData.email || user?.email || 'user@jaringlokal.com',
       phone: ticketData.phone || '',
       category: ticketData.category || 'Pertanyaan Umum',
       subject: ticketData.subject || 'Bantuan Layanan',
@@ -511,7 +729,7 @@ export const DataProvider = ({ children }) => {
         {
           id: Date.now(),
           sender: 'visitor',
-          senderName: ticketData.name || 'Pengunjung',
+          senderName: ticketData.name || user?.name || 'Pengguna',
           text: initialMessage,
           created_at: createdAt,
         }
@@ -543,6 +761,11 @@ export const DataProvider = ({ children }) => {
     const updated = [tempTicket, ...tickets];
     setTickets(updated);
     localStorage.setItem('jaringlokal_tickets', JSON.stringify(updated));
+    if (user?.id) {
+      localStorage.setItem(`jaringlokal_user_tickets_${user.id}`, JSON.stringify(
+        updated.filter(t => String(t.user_id) === String(user.id) || t.email?.toLowerCase() === user.email?.toLowerCase())
+      ));
+    }
 
     try {
       const { data, error } = await supabase.from('support_tickets').insert([newTicket]).select().single();
@@ -570,9 +793,9 @@ export const DataProvider = ({ children }) => {
             created_at: new Date().toISOString()
           });
         }
-        return { 
-          ...t, 
-          status, 
+        return {
+          ...t,
+          status,
           admin_reply: adminReply !== null ? adminReply : t.admin_reply,
           messages: newMessages,
           updated_at: new Date().toISOString()
@@ -585,9 +808,9 @@ export const DataProvider = ({ children }) => {
 
     try {
       const target = updated.find(t => t.id === ticketId);
-      const updatePayload = { 
-        status, 
-        updated_at: new Date().toISOString() 
+      const updatePayload = {
+        status,
+        updated_at: new Date().toISOString()
       };
       if (target) {
         if (target.admin_reply !== undefined) updatePayload.admin_reply = target.admin_reply;
@@ -605,7 +828,7 @@ export const DataProvider = ({ children }) => {
         const currentMessages = Array.isArray(t.messages) && t.messages.length > 0
           ? [...t.messages]
           : [{ id: 1, sender: 'visitor', senderName: t.name || 'Pengunjung', text: t.message || '', created_at: t.created_at || new Date().toISOString() }];
-        
+
         const newMsgList = [...currentMessages, {
           id: Date.now(),
           sender: messageObj.sender || 'visitor',
@@ -647,7 +870,8 @@ export const DataProvider = ({ children }) => {
       products, addProduct, updateProduct, deleteProduct,
       stores, registerStore, updateStoreStatus, getStoreForUser,
       cart, addToCart, updateCartQuantity, removeFromCart, clearCart,
-      orders, checkout, updateOrderStatus,
+      orders, checkout, updateOrderStatus, updateOrderEscrowStatus,
+      orderChats, loadOrderChats, sendOrderChatMessage,
       tickets, createTicket, updateTicketStatus, addTicketMessage, loadTickets,
       userLogs, loadLogs,
       visitorCount,

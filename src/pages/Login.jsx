@@ -139,13 +139,14 @@ export function Login() {
                   />
                   <span>Ingat Saya</span>
                 </label>
-                <Link
-                  to={`/forgot-password`}
-                  state={{ email }}
+                <a
+                  href={`https://wa.me/6281234567890?text=${encodeURIComponent(`Halo Admin JaringLokal, saya mengalami kendala lupa password akun saya${email ? ` (Email: ${email})` : ''}.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="font-medium text-ocean-600 hover:text-ocean-900 hover:underline text-xs sm:text-sm"
                 >
                   Lupa Password?
-                </Link>
+                </a>
               </div>
 
               <Button
@@ -188,9 +189,14 @@ export function Login() {
               </div>
               <div className="text-xs text-ocean-500 mt-1">
                 Mengalami masalah lain?{' '}
-                <Link to="/support" className="font-semibold text-sand-700 hover:text-sand-900 underline">
-                  Pusat Bantuan &amp; Tiket Support
-                </Link>
+                <a
+                  href="https://wa.me/6281234567890?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-sand-700 hover:text-sand-900 underline"
+                >
+                  Bantuan Admin via WhatsApp
+                </a>
               </div>
             </div>
           </div>

@@ -8,15 +8,21 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { QRCodeModal } from '../components/ui/QRCodeModal';
 import { ToastContainer, useToast } from '../components/ui/Toast';
-import { Store, Plus, Edit, Trash2, Search, Package, ShieldCheck, ArrowLeft, ShoppingBag, QrCode } from 'lucide-react';
+import { Store, Plus, Edit, Trash2, Search, Package, ShieldCheck, ArrowLeft, ShoppingBag, QrCode, LifeBuoy, MessageSquare, Shield, ArrowRight } from 'lucide-react';
 
 export function SellerDashboard() {
   const { user } = useAuth();
-  const { products, addProduct, updateProduct, deleteProduct, stores, getStoreForUser } = useData();
+  const { products, addProduct, updateProduct, deleteProduct, stores, orders, getStoreForUser } = useData();
   const { toasts, addToast, removeToast } = useToast();
   const navigate = useNavigate();
 
   const userStore = getStoreForUser(user?.id);
+
+  // Filter incoming orders for this store
+  const incomingOrders = (orders || []).filter(o =>
+    (userStore?.id && (String(o.store_id) === String(userStore.id) || String(o.seller_id) === String(user?.id))) ||
+    (userStore?.store_name && (o.store_name === userStore.store_name || (o.items && o.items.some(it => it.store_name === userStore.store_name))))
+  );
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,7 +75,6 @@ export function SellerDashboard() {
     if (userStore) {
       return p.store_id === userStore.id || p.store_name === userStore.store_name;
     }
-    // Fallback match by store_name if store_id not assigned
     return true;
   });
 
@@ -150,12 +155,12 @@ export function SellerDashboard() {
           {isPending 
             ? 'Permohonan pendaftaran toko Anda saat ini sedang menunggu persetujuan dari Admin. Anda akan diberikan akses berjualan setelah aplikasi disetujui.'
             : isRejected
-            ? 'Mohon maaf, aplikasi pendaftaran toko Anda telah ditolak oleh admin. Silakan periksa status permohonan Anda.'
+            ? 'Mohon maaf, aplikasi pendaftaran toko Anda telah ditolak oleh admin. Anda dapat mengajukan pendaftaran toko baru dengan data usaha yang diperbarui.'
             : 'Hanya akun penjual yang telah disetujui oleh admin yang dapat mengakses Dashboard Penjual.'}
         </p>
         <Link to="/register-seller">
           <Button className="px-6">
-            {userStore ? 'Lihat Status Pendaftaran Toko' : 'Daftar Sebagai Penjual'}
+            {userStore?.status === 'rejected' ? 'Ajukan Pendaftaran Toko Baru' : userStore ? 'Lihat Status Pendaftaran Toko' : 'Daftar Sebagai Penjual'}
           </Button>
         </Link>
       </div>
@@ -165,9 +170,9 @@ export function SellerDashboard() {
   const totalStock = sellerProducts.reduce((acc, p) => acc + (p.stock || 0), 0);
 
   return (
-    <div className="container mx-auto px-4 py-10">
+    <div className="container mx-auto px-4 py-10 space-y-8 animate-fade-in">
       {/* Top bar & navigation */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-ocean-500 mb-1">
             <Link to="/catalog" className="hover:text-ocean-700 flex items-center gap-1">
@@ -181,7 +186,7 @@ export function SellerDashboard() {
             {userStore?.store_name || 'Toko Penjual Saya'}
           </h1>
           <p className="text-ocean-600 text-sm mt-1">
-            Kelola inventori dan katalog produk hasil laut untuk toko Anda.
+            Kelola inventori, tangani pesanan pembeli, dan pantau rekening bersama escrow toko Anda.
           </p>
         </div>
 
@@ -189,6 +194,11 @@ export function SellerDashboard() {
           <Button variant="outline" onClick={handleShareStoreQR} className="flex items-center gap-2 border-sand-400 text-sand-700 hover:bg-sand-50">
             <QrCode className="h-4 w-4 text-sand-600" /> QR Code Toko
           </Button>
+          <Link to="/support">
+            <Button variant="outline" className="flex items-center gap-2 border-ocean-300 text-ocean-700 hover:bg-ocean-50">
+              <LifeBuoy className="h-4 w-4 text-ocean-600" /> Support Tiket
+            </Button>
+          </Link>
           <Link to="/catalog">
             <Button variant="outline" className="flex items-center gap-2">
               <ShoppingBag className="h-4 w-4" /> Lihat Pasar
@@ -201,11 +211,11 @@ export function SellerDashboard() {
       </div>
 
       {/* Store Banner / Card */}
-      <div className="bg-gradient-to-r from-ocean-900 via-ocean-800 to-ocean-700 text-white rounded-2xl p-6 shadow-lg mb-8">
+      <div className="bg-gradient-to-r from-ocean-900 via-ocean-800 to-ocean-700 text-white rounded-2xl p-6 shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
           <div className="md:col-span-2">
             <div className="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 text-xs font-semibold px-3 py-1 rounded-full mb-3 border border-emerald-400/30">
-              <ShieldCheck className="h-3.5 w-3.5" /> Toko Disetujui & Aktif
+              <ShieldCheck className="h-3.5 w-3.5" /> Toko Disetujui &amp; Aktif Berjualan
             </div>
             <h2 className="text-xl font-bold">{userStore?.store_name || 'Toko Penjual'}</h2>
             <p className="text-ocean-200 text-sm mt-1">{userStore?.description || 'Toko penyedia hasil laut berkualitas tinggi.'}</p>
@@ -229,6 +239,50 @@ export function SellerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── INCOMING ESCROW ORDERS SECTION ── */}
+      {incomingOrders.length > 0 && (
+        <div className="bg-white rounded-2xl border border-ocean-100 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-ocean-900 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-emerald-600" />
+                Pesanan Masuk &amp; Ruang Transaksi Escrow ({incomingOrders.length})
+              </h3>
+              <p className="text-xs text-ocean-500">Berkoordinasi dengan pembeli dan admin untuk pengiriman pesanan.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {incomingOrders.map(ord => (
+              <div key={ord.id} className="p-4 rounded-xl border border-ocean-200 bg-ocean-50/40 hover:bg-ocean-50 transition-all flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-mono font-bold text-ocean-800">#{String(ord.id).slice(-6)}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {ord.status || 'Escrow'}
+                    </span>
+                  </div>
+                  <div className="text-xs font-bold text-ocean-900">
+                    Pembeli: {ord.user_name || ord.userName || 'Pelanggan'}
+                  </div>
+                  <div className="text-xs text-ocean-600 mt-0.5">
+                    {(ord.items || []).length} item • Total: <strong>Rp {Number(ord.total_amount || ord.totalAmount).toLocaleString('id-ID')}</strong>
+                  </div>
+                </div>
+
+                <Link to={`/order-chat/${ord.id}`}>
+                  <Button size="sm" className="w-full h-8 text-xs bg-ocean-600 hover:bg-ocean-700 text-white font-medium flex items-center justify-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span>Chat Pembeli &amp; Admin</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Product List Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-ocean-100 overflow-hidden">
