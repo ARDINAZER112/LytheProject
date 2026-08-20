@@ -2,10 +2,10 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 // Standard Direct Connection Host & Port 5432
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:%40Rengga123_@db.nggbfdsdpotszdhfldqk.supabase.co:5432/postgres';
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:%40Rengga123_@db.zkywxhgcdkixufpxlnwi.supabase.co:5432/postgres';
 
 async function setupDatabase() {
-  console.log('🔌 Attempting direct connection to PostgreSQL Supabase database (db.nggbfdsdpotszdhfldqk.supabase.co:5432)...');
+  console.log('🔌 Attempting direct connection to PostgreSQL Supabase database (db.zkywxhgcdkixufpxlnwi.supabase.co:5432)...');
   
   const pool = new Pool({
     connectionString,

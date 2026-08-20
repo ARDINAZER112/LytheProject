@@ -62,9 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   // ───────────────────────────────────────────────────────────────
   // LOGIN — Supabase Auth signInWithPassword (bcrypt otomatis)
-  // captchaToken: reCAPTCHA v3 token dari frontend (opsional,
-  // Supabase tidak memvalidasinya di signInWithPassword, dipakai
-  // sebagai sinyal client-side saja untuk keperluan logging).
+  // ───────────────────────────────────────────────────────────────
   // ───────────────────────────────────────────────────────────────
   const login = async (email, password, rememberMe = true) => {
     try {
@@ -159,16 +157,11 @@ export const AuthProvider = ({ children }) => {
   // FORGOT PASSWORD — Supabase resetPasswordForEmail
   // captchaToken: Cloudflare Turnstile token (Supabase mendukung natively)
   // ───────────────────────────────────────────────────────────────
-  const requestPasswordReset = async (email, captchaToken) => {
+  const requestPasswordReset = async (email) => {
     try {
       const options = {
         redirectTo: `${window.location.origin}/reset-password`,
       };
-
-      // Supabase Auth mendukung Turnstile captchaToken di sini
-      if (captchaToken) {
-        options.captchaToken = captchaToken;
-      }
 
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
@@ -270,9 +263,7 @@ function mapAuthError(message = '') {
   if (m.includes('rate limit') || m.includes('too many requests')) {
     return 'Terlalu banyak percobaan. Silakan tunggu beberapa saat dan coba lagi.';
   }
-  if (m.includes('captcha')) {
-    return 'Verifikasi CAPTCHA gagal. Silakan coba lagi.';
-  }
+
   if (m.includes('network') || m.includes('fetch')) {
     return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
   }

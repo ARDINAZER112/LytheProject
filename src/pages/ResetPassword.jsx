@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Captcha } from '../components/ui/Captcha';
 import { Ship, Eye, EyeOff, AlertCircle, KeyRound } from 'lucide-react';
 
 export function ResetPassword() {
@@ -15,11 +14,7 @@ export function ResetPassword() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Cloudflare Turnstile — gate manusia sebelum password disimpan.
-  // Supabase updateUser() tidak menerima captchaToken, jadi ini adalah
-  // client-side enforcement: form tidak bisa disubmit tanpa Turnstile lulus.
-  const captchaRef = useRef(null);
-  const [captchaToken, setCaptchaToken] = useState('');
+
 
   const { updatePassword } = useAuth();
   const navigate = useNavigate();
@@ -61,17 +56,9 @@ export function ResetPassword() {
       setError('Kata sandi tidak cocok. Silakan periksa kembali.');
       return;
     }
-    if (!captchaToken) {
-      setError('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
-      return;
-    }
-
     setLoading(true);
     const result = await updatePassword(newPassword);
     setLoading(false);
-
-    captchaRef.current?.resetCaptcha();
-    setCaptchaToken('');
 
     if (result.success) {
       await supabase.auth.signOut();
@@ -172,17 +159,12 @@ export function ResetPassword() {
                   )}
                 </div>
 
-                {/* Cloudflare Turnstile — verifikasi manusia sebelum simpan password */}
-                <Captcha
-                  ref={captchaRef}
-                  onVerify={setCaptchaToken}
-                  onExpire={() => setCaptchaToken('')}
-                />
+
 
                 <Button
                   type="submit"
                   className="w-full h-12 text-base mt-2"
-                  disabled={loading || !captchaToken}
+                  disabled={loading}
                 >
                   {loading ? 'Menyimpan...' : 'Simpan Kata Sandi'}
                 </Button>

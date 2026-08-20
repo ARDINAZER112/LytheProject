@@ -1,13 +1,13 @@
 # 🗄️ Supabase PostgreSQL Connection & Marketplace Setup Guide
 
-Everything has been configured for your project **AerLaut** (`https://nggbfdsdpotszdhfldqk.supabase.co`).
+Everything has been configured for your project **AerLaut** (`https://zkywxhgcdkixufpxlnwi.supabase.co`).
 
 ---
 
 ## 🔑 Your Active Credentials (`.env.local`)
 
 ```env
-VITE_SUPABASE_URL=https://nggbfdsdpotszdhfldqk.supabase.co
+VITE_SUPABASE_URL=https://zkywxhgcdkixufpxlnwi.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -15,7 +15,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 📜 Full PostgreSQL SQL Script (SQL Editor)
 
-Copy and run this complete SQL script in your **[Supabase SQL Editor](https://supabase.com/dashboard/project/nggbfdsdpotszdhfldqk/sql/new)**. It creates all required tables (`users`, `stores`, `products`, `orders`, and `user_logs`), alters existing schemas safely, seeds initial sample data, and enables RLS policies:
+Copy and run this complete SQL script in your **[Supabase SQL Editor](https://supabase.com/dashboard/project/zkywxhgcdkixufpxlnwi/sql/new)**. It creates all required tables (`users`, `stores`, `products`, `orders`, and `user_logs`), alters existing schemas safely, seeds initial sample data, and enables RLS policies:
 
 ```sql
 -- ============================================================
@@ -186,5 +186,5 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.user_logs;
 
 ## 👥 How to View Registered Accounts, Stores & Activity Logs
 
-- Go to **[Supabase Table Editor](https://supabase.com/dashboard/project/nggbfdsdpotszdhfldqk/editor)**.
+- Go to **[Supabase Table Editor](https://supabase.com/dashboard/project/zkywxhgcdkixufpxlnwi/editor)**.
 - Select **`users`**, **`stores`**, **`products`**, **`orders`**, or **`user_logs`** tables.

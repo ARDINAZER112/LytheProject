@@ -3,12 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation, Link } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Captcha } from '../components/ui/Captcha';
 import { Ship, AlertCircle, ArrowLeft, MailCheck } from 'lucide-react';
 
 // Halaman Lupa Kata Sandi — meminta reset link via email.
-// Menggunakan Cloudflare Turnstile (visible widget) yang didukung natively
-// oleh Supabase resetPasswordForEmail() melalui parameter captchaToken.
 export function ForgotPassword() {
   const location = useLocation();
   const [resetEmail, setResetEmail] = useState(
@@ -20,9 +17,7 @@ export function ForgotPassword() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
 
-  // Cloudflare Turnstile
-  const captchaRef = useRef(null);
-  const [captchaToken, setCaptchaToken] = useState('');
+
 
   const { requestPasswordReset } = useAuth();
 
@@ -30,17 +25,9 @@ export function ForgotPassword() {
     e.preventDefault();
     setError('');
 
-    if (!captchaToken) {
-      setError('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
-      return;
-    }
-
     setLoading(true);
-    const result = await requestPasswordReset(resetEmail, captchaToken);
+    const result = await requestPasswordReset(resetEmail);
     setLoading(false);
-
-    captchaRef.current?.resetCaptcha();
-    setCaptchaToken('');
 
     if (result.success) {
       setView('check-email');
@@ -50,17 +37,10 @@ export function ForgotPassword() {
   };
 
   const handleResendReset = async () => {
-    if (!captchaToken) {
-      setResendMsg('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
-      return;
-    }
     setResendMsg('');
     setResending(true);
-    const result = await requestPasswordReset(resetEmail, captchaToken);
+    const result = await requestPasswordReset(resetEmail);
     setResending(false);
-
-    captchaRef.current?.resetCaptcha();
-    setCaptchaToken('');
 
     setResendMsg(
       result.success
@@ -109,14 +89,7 @@ export function ForgotPassword() {
                   />
                 </div>
 
-                {/* Cloudflare Turnstile — didukung natively oleh Supabase */}
-                <Captcha
-                  ref={captchaRef}
-                  onVerify={setCaptchaToken}
-                  onExpire={() => setCaptchaToken('')}
-                />
-
-                <Button type="submit" className="w-full h-12 text-base mt-2" disabled={loading || !captchaToken}>
+                <Button type="submit" className="w-full h-12 text-base mt-2" disabled={loading}>
                   {loading ? 'Memproses...' : 'Kirim Link Reset'}
                 </Button>
               </form>
@@ -142,12 +115,7 @@ export function ForgotPassword() {
               )}
 
               <div className="space-y-4">
-                {/* Turnstile diperlukan lagi sebelum resend diizinkan */}
-                <Captcha
-                  ref={captchaRef}
-                  onVerify={setCaptchaToken}
-                  onExpire={() => setCaptchaToken('')}
-                />
+
 
                 <Link to="/login">
                   <Button className="w-full h-12 text-base">
@@ -157,7 +125,7 @@ export function ForgotPassword() {
                 <button
                   type="button"
                   onClick={handleResendReset}
-                  disabled={resending || !captchaToken}
+                  disabled={resending}
                   className="w-full text-center text-sm font-semibold text-ocean-700 hover:text-ocean-900 hover:underline disabled:opacity-50"
                 >
                   {resending ? 'Mengirim ulang...' : 'Tidak menerima email? Kirim ulang'}
