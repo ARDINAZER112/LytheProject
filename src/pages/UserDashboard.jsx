@@ -169,6 +169,182 @@ export function UserDashboard() {
     <div className="container mx-auto px-4 py-8 animate-fade-in space-y-8">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
+      {/* ── Marketplace Section & Controls ── */}
+      <div id="marketplace-catalog">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-ocean-900">Katalog Produk Live</h2>
+            <p className="text-ocean-500 text-xs md:text-sm">
+              {selectedStore === 'Semua Toko'
+                ? `Menampilkan ${filteredProducts.length} produk dari semua toko mitra.`
+                : `Menampilkan ${filteredProducts.length} produk dari "${selectedStore}".`}
+            </p>
+          </div>
+        </div>
+
+        {/* Search & Filter Controls */}
+        <div className="bg-white p-4 md:p-6 rounded-2xl border border-ocean-100 shadow-sm mb-6 space-y-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Search bar */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ocean-400" />
+              <Input
+                type="text"
+                placeholder="Cari ikan, cumi, udang, terasi, atau nama toko..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 text-sm bg-ocean-50/50 border-ocean-200 focus:bg-white"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Store filter dropdown */}
+            <div className="flex gap-2">
+              <select
+                value={selectedStore}
+                onChange={(e) => setSelectedStore(e.target.value)}
+                className="h-11 px-3 text-sm rounded-xl border border-ocean-200 bg-ocean-50/50 text-ocean-800 font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500"
+              >
+                {storeList.map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+
+              {/* Sorting dropdown */}
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="h-11 px-3 text-sm rounded-xl border border-ocean-200 bg-ocean-50/50 text-ocean-800 font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none">
+            <span className="text-xs font-semibold text-ocean-400 uppercase tracking-wider mr-1 flex items-center gap-1 whitespace-nowrap">
+              <Filter className="h-3 w-3" /> Kategori:
+            </span>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilterCategory(cat)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${filterCategory === cat
+                    ? 'bg-ocean-600 text-white shadow-sm font-semibold'
+                    : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100'
+                  }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Product Grid ── */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-ocean-100 p-8 shadow-sm">
+            <Package className="h-16 w-16 text-ocean-200 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-ocean-900 mb-2">Produk Tidak Ditemukan</h3>
+            <p className="text-ocean-500 text-sm mb-6">Tidak ada produk yang cocok dengan pencarian atau filter yang dipilih.</p>
+            <Button
+              variant="outline"
+              onClick={() => { setSearchTerm(''); setFilterCategory('Semua'); setSelectedStore('Semua Toko'); }}
+            >
+              Reset Semua Filter
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger">
+            {filteredProducts.map((product) => {
+              const storeName = product.store_name || 'Toko Nelayan Bahari Pak Bambang';
+              return (
+                <div
+                  key={product.id}
+                  className="group bg-white rounded-2xl overflow-hidden border border-ocean-100 shadow-sm card-hover flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Image container */}
+                    <div
+                      onClick={() => openProductModal(product)}
+                      className="relative h-48 overflow-hidden cursor-pointer bg-ocean-50"
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-xs font-semibold px-2.5 py-1 rounded-full text-ocean-800 shadow-sm">
+                        {product.category}
+                      </div>
+                      {product.stock < 10 && (
+                        <div className="absolute top-3 right-3 bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                          Stok Sisa {product.stock}
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => handleShareProductQR(e, product)}
+                        className="absolute bottom-3 right-3 bg-white/90 backdrop-blur hover:bg-white text-ocean-800 p-2 rounded-full shadow-md transition-transform hover:scale-110"
+                        title="Bagikan Kode QR Produk"
+                      >
+                        <QrCode className="h-4 w-4 text-ocean-700" />
+                      </button>
+                    </div>
+
+                    {/* Body info */}
+                    <div className="p-4">
+                      {/* STORE NAME BADGE - Prominent Requirement */}
+                      <button
+                        onClick={() => setSelectedStore(storeName)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-sand-700 bg-sand-50 border border-sand-200 px-2.5 py-1 rounded-md mb-2.5 w-fit hover:bg-sand-100 transition-colors text-left"
+                        title="Klik untuk memfilter toko ini"
+                      >
+                        <Store className="h-3.5 w-3.5 text-sand-600 flex-shrink-0" />
+                        <span className="truncate max-w-[190px]">{storeName}</span>
+                      </button>
+
+                      <h3
+                        onClick={() => openProductModal(product)}
+                        className="font-bold text-ocean-900 text-base mb-1 line-clamp-1 cursor-pointer hover:text-ocean-600 transition-colors"
+                      >
+                        {product.name}
+                      </h3>
+
+                      <div className="text-lg font-bold text-sand-600 mb-3">
+                        Rp {Number(product.price).toLocaleString('id-ID')}{' '}
+                        <span className="text-xs font-normal text-ocean-400">/{product.unit || 'kg'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer action */}
+                  <div className="p-4 pt-0">
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={product.stock <= 0}
+                      className="w-full flex items-center justify-center gap-2 bg-ocean-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-ocean-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      {product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+
       {/* ── Dashboard Welcome Header ── */}
       <div className="bg-gradient-to-r from-ocean-900 via-ocean-800 to-ocean-700 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-8">
@@ -360,181 +536,6 @@ export function UserDashboard() {
             );
           })}
         </div>
-      </div>
-
-      {/* ── Marketplace Section & Controls ── */}
-      <div id="marketplace-catalog">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-ocean-900">Katalog Produk Live</h2>
-            <p className="text-ocean-500 text-xs md:text-sm">
-              {selectedStore === 'Semua Toko'
-                ? `Menampilkan ${filteredProducts.length} produk dari semua toko mitra.`
-                : `Menampilkan ${filteredProducts.length} produk dari "${selectedStore}".`}
-            </p>
-          </div>
-        </div>
-
-        {/* Search & Filter Controls */}
-        <div className="bg-white p-4 md:p-6 rounded-2xl border border-ocean-100 shadow-sm mb-6 space-y-4">
-          <div className="flex flex-col md:flex-row gap-3">
-            {/* Search bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ocean-400" />
-              <Input
-                type="text"
-                placeholder="Cari ikan, cumi, udang, terasi, atau nama toko..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-11 text-sm bg-ocean-50/50 border-ocean-200 focus:bg-white"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ocean-400 hover:text-ocean-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Store filter dropdown */}
-            <div className="flex gap-2">
-              <select
-                value={selectedStore}
-                onChange={(e) => setSelectedStore(e.target.value)}
-                className="h-11 px-3 text-sm rounded-xl border border-ocean-200 bg-ocean-50/50 text-ocean-800 font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500"
-              >
-                {storeList.map(st => (
-                  <option key={st} value={st}>{st}</option>
-                ))}
-              </select>
-
-              {/* Sorting dropdown */}
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="h-11 px-3 text-sm rounded-xl border border-ocean-200 bg-ocean-50/50 text-ocean-800 font-medium focus:outline-none focus:ring-2 focus:ring-ocean-500"
-              >
-                {SORT_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none">
-            <span className="text-xs font-semibold text-ocean-400 uppercase tracking-wider mr-1 flex items-center gap-1 whitespace-nowrap">
-              <Filter className="h-3 w-3" /> Kategori:
-            </span>
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${filterCategory === cat
-                    ? 'bg-ocean-600 text-white shadow-sm font-semibold'
-                    : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100'
-                  }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Product Grid ── */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-ocean-100 p-8 shadow-sm">
-            <Package className="h-16 w-16 text-ocean-200 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-ocean-900 mb-2">Produk Tidak Ditemukan</h3>
-            <p className="text-ocean-500 text-sm mb-6">Tidak ada produk yang cocok dengan pencarian atau filter yang dipilih.</p>
-            <Button
-              variant="outline"
-              onClick={() => { setSearchTerm(''); setFilterCategory('Semua'); setSelectedStore('Semua Toko'); }}
-            >
-              Reset Semua Filter
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 stagger">
-            {filteredProducts.map((product) => {
-              const storeName = product.store_name || 'Toko Nelayan Bahari Pak Bambang';
-              return (
-                <div
-                  key={product.id}
-                  className="group bg-white rounded-2xl overflow-hidden border border-ocean-100 shadow-sm card-hover flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Image container */}
-                    <div
-                      onClick={() => openProductModal(product)}
-                      className="relative h-48 overflow-hidden cursor-pointer bg-ocean-50"
-                    >
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-xs font-semibold px-2.5 py-1 rounded-full text-ocean-800 shadow-sm">
-                        {product.category}
-                      </div>
-                      {product.stock < 10 && (
-                        <div className="absolute top-3 right-3 bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                          Stok Sisa {product.stock}
-                        </div>
-                      )}
-                      <button
-                        onClick={(e) => handleShareProductQR(e, product)}
-                        className="absolute bottom-3 right-3 bg-white/90 backdrop-blur hover:bg-white text-ocean-800 p-2 rounded-full shadow-md transition-transform hover:scale-110"
-                        title="Bagikan Kode QR Produk"
-                      >
-                        <QrCode className="h-4 w-4 text-ocean-700" />
-                      </button>
-                    </div>
-
-                    {/* Body info */}
-                    <div className="p-4">
-                      {/* STORE NAME BADGE - Prominent Requirement */}
-                      <button
-                        onClick={() => setSelectedStore(storeName)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-sand-700 bg-sand-50 border border-sand-200 px-2.5 py-1 rounded-md mb-2.5 w-fit hover:bg-sand-100 transition-colors text-left"
-                        title="Klik untuk memfilter toko ini"
-                      >
-                        <Store className="h-3.5 w-3.5 text-sand-600 flex-shrink-0" />
-                        <span className="truncate max-w-[190px]">{storeName}</span>
-                      </button>
-
-                      <h3
-                        onClick={() => openProductModal(product)}
-                        className="font-bold text-ocean-900 text-base mb-1 line-clamp-1 cursor-pointer hover:text-ocean-600 transition-colors"
-                      >
-                        {product.name}
-                      </h3>
-
-                      <div className="text-lg font-bold text-sand-600 mb-3">
-                        Rp {Number(product.price).toLocaleString('id-ID')}{' '}
-                        <span className="text-xs font-normal text-ocean-400">/{product.unit || 'kg'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer action */}
-                  <div className="p-4 pt-0">
-                    <button
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.stock <= 0}
-                      className="w-full flex items-center justify-center gap-2 bg-ocean-600 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-ocean-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      {product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* ── Product Detail Modal ── */}
