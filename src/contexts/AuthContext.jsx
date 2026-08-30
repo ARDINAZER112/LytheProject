@@ -124,7 +124,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       // signUp berhasil — user mungkin perlu konfirmasi email
-      // Jika Supabase email confirmation dimatikan, session langsung aktif
+      // Jika Supabase email confirmation dimatikan, session langsung aktif.
+      // Jika email confirmation AKTIF, data.session akan null di sini —
+      // jangan anggap user sudah login, tampilkan layar "cek email" saja.
       const authUser = data.user;
       if (!authUser) {
         return {
@@ -146,7 +148,12 @@ export const AuthProvider = ({ children }) => {
       const newUser = { id: authUser.id, name, email: authUser.email, phone, role: 'customer' };
       logActivity({ action: 'register', userId: newUser.id, userName: name });
 
-      return { success: true, user: newUser };
+      const needsEmailConfirmation = !data.session;
+      if (!needsEmailConfirmation) {
+        setUser(newUser);
+      }
+
+      return { success: true, user: newUser, needsEmailConfirmation };
     } catch (err) {
       console.error('[AuthContext] register error:', err);
       return { success: false, error: 'Gagal mendaftarkan akun. Silakan coba lagi.' };

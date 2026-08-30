@@ -19,6 +19,8 @@ import { Statistics } from './pages/Statistics';
 import { Support } from './pages/Support';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 // Seller Pages
 import { SellerRegister } from './pages/SellerRegister';
@@ -80,6 +82,8 @@ function App() {
               <Route path="statistics" element={<Statistics />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="register-seller" element={<SellerRegister />} />
               <Route path="seller/dashboard" element={
                 <ProtectedRoute>

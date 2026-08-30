@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Ship, Eye, EyeOff, AlertCircle, CheckCircle, Phone } from 'lucide-react';
+import { Ship, Eye, EyeOff, AlertCircle, CheckCircle, Phone, MailCheck } from 'lucide-react';
 
 export function Register() {
   const [name, setName]             = useState('');
@@ -15,6 +15,7 @@ export function Register() {
   const [showConf, setShowConf]     = useState(false);
   const [error, setError]           = useState('');
   const [loading, setLoading]       = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const { register } = useAuth();
   const navigate     = useNavigate();
@@ -45,7 +46,13 @@ export function Register() {
     setLoading(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      if (result.needsEmailConfirmation) {
+        // Supabase mengharuskan konfirmasi email dulu — jangan asumsikan
+        // user sudah login, tampilkan layar "cek email" saja.
+        setNeedsConfirmation(true);
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error || 'Gagal mendaftar. Silakan coba lagi.');
     }
@@ -97,6 +104,24 @@ export function Register() {
           </div>
 
           <div className="bg-white p-8 md:p-10 rounded-2xl shadow-sm border border-ocean-100 animate-slide-up">
+            {needsConfirmation ? (
+              <>
+                <div className="flex justify-center mb-4">
+                  <div className="h-14 w-14 rounded-full bg-ocean-100 flex items-center justify-center">
+                    <MailCheck className="h-7 w-7 text-ocean-600" />
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-ocean-900 mb-1 text-center">Cek Email Anda</h2>
+                <p className="text-ocean-500 text-sm mb-8 text-center">
+                  Kami telah mengirim link konfirmasi ke <span className="font-semibold">{email}</span>.
+                  Klik link tersebut untuk mengaktifkan akun Anda, lalu masuk (login).
+                </p>
+                <Link to="/login">
+                  <Button className="w-full h-12 text-base">Kembali ke Halaman Masuk</Button>
+                </Link>
+              </>
+            ) : (
+              <>
             <h2 className="text-2xl font-bold text-ocean-900 mb-1">Buat Akun Baru</h2>
             <p className="text-ocean-500 text-sm mb-8">Isi formulir di bawah untuk bergabung.</p>
 
@@ -188,6 +213,8 @@ export function Register() {
                 Masuk
               </Link>
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>

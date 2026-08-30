@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Ship, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Ship, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail]       = useState(() => localStorage.getItem('jaringlokal_remembered_email') || '');
@@ -15,6 +15,8 @@ export function Login() {
 
   const { login } = useAuth();
   const navigate  = useNavigate();
+  const location  = useLocation();
+  const resetSuccess = location.state?.resetSuccess;
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
@@ -75,6 +77,13 @@ export function Login() {
             <h2 className="text-2xl font-bold text-ocean-900 mb-1">Masuk ke Akun</h2>
             <p className="text-ocean-500 text-sm mb-8">Masukkan email dan kata sandi Anda.</p>
 
+            {resetSuccess && !error && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-xl mb-6">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                Kata sandi berhasil diperbarui. Silakan masuk dengan kata sandi baru Anda.
+              </div>
+            )}
+
             {error && (
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-6">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -125,14 +134,13 @@ export function Login() {
                   />
                   <span>Ingat Saya</span>
                 </label>
-                <a
-                  href={`https://wa.me/6281234567890?text=${encodeURIComponent(`Halo Admin JaringLokal, saya mengalami kendala lupa password akun saya${email ? ` (Email: ${email})` : ''}.`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/forgot-password"
+                  state={{ email }}
                   className="font-medium text-ocean-600 hover:text-ocean-900 hover:underline text-xs sm:text-sm"
                 >
                   Lupa Password?
-                </a>
+                </Link>
               </div>
 
               <Button
