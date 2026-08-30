@@ -2,38 +2,38 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
-import { 
-  ArrowRight, Anchor, TrendingUp, Users, Star, ShoppingCart, 
-  Truck, CheckCircle, UserPlus, LogIn, LayoutDashboard, 
+import {
+  ArrowRight, Anchor, TrendingUp, Users, Star, ShoppingCart,
+  Truck, CheckCircle, UserPlus, LogIn, LayoutDashboard,
   Headphones, MessageSquare, Mail, Phone, Clock, LifeBuoy, Send, X, CheckCircle2
 } from 'lucide-react';
 
 // ── Stats counter data ──────────────────────────────────────
 const stats = [
-  { value: '240+',   label: 'Nelayan Bermitra' },
+  { value: '240+', label: 'Nelayan Bermitra' },
   { value: '10.000', label: 'kg Terjual / Bulan' },
-  { value: '98%',    label: 'Kepuasan Pembeli' },
+  { value: '98%', label: 'Kepuasan Pembeli' },
 ];
 
 // ── Why choose us ───────────────────────────────────────────
 const features = [
-  { icon: Anchor,    title: 'Tangkapan Harian',   color: 'ocean', desc: 'Produk dari perahu ke tangan Anda di hari yang sama — tanpa cold-chain yang panjang.' },
-  { icon: TrendingUp,title: 'Harga Adil',         color: 'sand',  desc: 'Memotong tengkulak sehingga nelayan lebih untung dan pembeli dapat harga lebih murah.' },
-  { icon: Users,     title: 'UMKM Berdaya',       color: 'ocean', desc: 'Membantu istri nelayan memasarkan olahan terasi, ikan asap, dan kerupuk ke pasar digital.' },
+  { icon: Anchor, title: 'Tangkapan Harian', color: 'ocean', desc: 'Produk dari perahu ke tangan Anda di hari yang sama — tanpa cold-chain yang panjang.' },
+  { icon: TrendingUp, title: 'Harga Adil', color: 'sand', desc: 'Memotong tengkulak sehingga nelayan lebih untung dan pembeli dapat harga lebih murah.' },
+  { icon: Users, title: 'UMKM Berdaya', color: 'ocean', desc: 'Membantu istri nelayan memasarkan olahan terasi, ikan asap, dan kerupuk ke pasar digital.' },
 ];
 
 // ── How it works ────────────────────────────────────────────
 const steps = [
-  { icon: ShoppingCart, step: '01', title: 'Pilih Produk',      desc: 'Masuk ke dashboard untuk menelusuri hasil laut segar dan olahan UMKM.' },
-  { icon: CheckCircle,  step: '02', title: 'Konfirmasi Pesanan', desc: 'Sistem kami menghubungkan pesanan langsung ke nelayan atau pengolah terdekat.' },
-  { icon: Truck,        step: '03', title: 'Kirim & Terima',    desc: 'Produk dikemas dan dikirim dalam hitungan jam — kesegaran terjamin.' },
+  { icon: ShoppingCart, step: '01', title: 'Pilih Produk', desc: 'Masuk ke dashboard untuk menelusuri hasil laut segar dan olahan UMKM.' },
+  { icon: CheckCircle, step: '02', title: 'Konfirmasi Pesanan', desc: 'Sistem kami menghubungkan pesanan langsung ke nelayan atau pengolah terdekat.' },
+  { icon: Truck, step: '03', title: 'Kirim & Terima', desc: 'Produk dikemas dan dikirim dalam hitungan jam — kesegaran terjamin.' },
 ];
 
 // ── Testimonials ────────────────────────────────────────────
 const testimonials = [
-  { name: 'Pak Budi Santoso',   role: 'Pemilik Resto Laut Biru',     text: 'Sejak pakai JaringLokal, biaya belanja ikan turun 30% dan kesegaran lebih terjaga. Sangat membantu!', rating: 5 },
-  { name: 'Ibu Sari Nelayan',   role: 'Pengrajin Terasi, Tuban',     text: 'Produk terasi saya kini bisa dijual ke seluruh kota. Pendapatan meningkat 2x lipat dari sebelumnya.', rating: 5 },
-  { name: 'Chef Anisa Rahma',   role: 'Head Chef Hotel Grand Pesisir',text: 'Kualitas produk konsisten dan pengiriman selalu tepat waktu. Kami tidak pernah kecewa!', rating: 5 },
+  { name: 'Pak Budi Santoso', role: 'Pemilik Resto Laut Biru', text: 'Sejak pakai JaringLokal, biaya belanja ikan turun 30% dan kesegaran lebih terjaga. Sangat membantu!', rating: 5 },
+  { name: 'Ibu Sari Nelayan', role: 'Pengrajin Terasi, Tuban', text: 'Produk terasi saya kini bisa dijual ke seluruh kota. Pendapatan meningkat 2x lipat dari sebelumnya.', rating: 5 },
+  { name: 'Chef Anisa Rahma', role: 'Head Chef Hotel Grand Pesisir', text: 'Kualitas produk konsisten dan pengiriman selalu tepat waktu. Kami tidak pernah kecewa!', rating: 5 },
 ];
 
 export function Home() {
@@ -242,7 +242,7 @@ export function Home() {
                       <Phone className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-xs text-ocean-300">WhatsApp</div>
+                      <div className="text-xs text-ocean-300">Hotline / WhatsApp</div>
                       <div className="font-bold text-white">+62 852-3699-5741</div>
                     </div>
                   </div>
@@ -284,7 +284,7 @@ export function Home() {
                   <Phone className="h-12 w-12 text-sand-400 mx-auto mb-3 animate-pulse" />
                   <h3 className="text-xl font-bold text-white mb-1">Hubungi WhatsApp Admin</h3>
                   <p className="text-xs text-ocean-200 mb-5">Layanan bantuan pra-login, pemulihan kata sandi akun, dan pertanyaan umum pengunjung.</p>
-                  
+
                   <div className="space-y-3">
                     <a
                       href="https://wa.me/6285236995741?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan."

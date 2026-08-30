@@ -171,6 +171,28 @@ CREATE TRIGGER users_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
+
+-- ============================================================
+-- BAGIAN 2.5: RLS HELPER FUNCTIONS
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT role FROM public.users WHERE id = auth.uid();
+$$;
+
 -- ============================================================
 -- BAGIAN 3: ROW LEVEL SECURITY (RLS)
 -- ============================================================
@@ -192,24 +214,17 @@ CREATE POLICY "users: baca profil sendiri"
 CREATE POLICY "users: update profil sendiri"
   ON public.users FOR UPDATE
   USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND role = (SELECT role FROM public.users WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() = id);
 
 -- Admin bisa baca semua user
 CREATE POLICY "users: admin baca semua"
   ON public.users FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 -- Admin bisa update semua user (termasuk ubah role)
 CREATE POLICY "users: admin update semua"
   ON public.users FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 -- Trigger INSERT diizinkan (service role)
 CREATE POLICY "users: trigger insert"
@@ -225,7 +240,7 @@ CREATE POLICY "stores: lihat toko"
   USING (
     status = 'approved'
     OR auth.uid() = user_id
-    OR EXISTS (SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin')
+    OR public.is_admin()
   );
 
 -- User login bisa daftar toko baru
@@ -241,9 +256,7 @@ CREATE POLICY "stores: seller update toko sendiri"
 -- Admin bisa semua operasi
 CREATE POLICY "stores: admin full access"
   ON public.stores FOR ALL
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 -- ── PRODUCTS ─────────────────────────────────────────────────
 
@@ -262,9 +275,7 @@ CREATE POLICY "products: seller kelola produk sendiri"
 -- Admin bisa semua
 CREATE POLICY "products: admin full access"
   ON public.products FOR ALL
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 -- ── ORDERS ───────────────────────────────────────────────────
 
@@ -281,9 +292,7 @@ CREATE POLICY "orders: buat pesanan"
 -- Admin bisa semua
 CREATE POLICY "orders: admin full access"
   ON public.orders FOR ALL
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 -- ── USER_LOGS ────────────────────────────────────────────────
 
@@ -299,9 +308,7 @@ CREATE POLICY "user_logs: baca log sendiri"
 -- Admin bisa baca semua log
 CREATE POLICY "user_logs: admin baca semua"
   ON public.user_logs FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM public.users u WHERE u.id = auth.uid() AND u.role = 'admin'
-  ));
+  USING (public.is_admin());
 
 
 -- ============================================================
@@ -362,7 +369,8 @@ INSERT INTO public.stores (user_id, store_name, description, address, phone, sta
 SELECT * FROM (VALUES
   (NULL::UUID, 'Toko Ikan Segar Pak Joko', 'Menjual aneka ikan laut segar hasil tangkapan harian nelayan Tuban.', 'Jl. Pantai Boom No. 8, Tuban', '081298765432', 'approved'),
   (NULL::UUID, 'UMKM Kerupuk & Ikan Asin Bu Ratna', 'Produsen kerupuk ikan dan ikan asin khas pesisir Tuban, higienis dan tanpa pengawet.', 'Jl. Kembang Bilo No. 21, Tuban', '082112345678', 'approved'),
-  (NULL::UUID, 'Mina Bahari Pak Slamet', 'Kelompok nelayan muda penyedia hasil laut premium: kepiting, lobster, dan kerang.', 'Jl. Glondonggede, Tuban', '085734567890', 'approved')
+  (NULL::UUID, 'Mina Bahari Pak Slamet', 'Kelompok nelayan muda penyedia hasil laut premium: kepiting, lobster, dan kerang.', 'Jl. Glondonggede, Tuban', '085734567890', 'approved'),
+  (NULL::UUID, 'Kios Hasil Laut Berkah', 'Penyedia ikan dan kerang segar harian langsung dari nelayan sekitar.', 'Jl. Sunan Bonang No. 9, Tuban', '081399887766', 'approved')
 ) AS v(user_id, store_name, description, address, phone, status)
 WHERE NOT EXISTS (SELECT 1 FROM public.stores WHERE store_name = v.store_name);
 
@@ -390,7 +398,14 @@ FROM (VALUES
   ('UMKM Kerupuk & Ikan Asin Bu Ratna', 'Petis Udang Khas Tuban',18000, 'Olahan', 55, 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&q=80&w=400', 'botol'),
   ('Mina Bahari Pak Slamet', 'Kepiting Bakau Segar',   95000,  'Tangkapan Segar', 15, 'https://images.unsplash.com/photo-1550747545-c896b5f89ff7?auto=format&fit=crop&q=80&w=400', 'kg'),
   ('Mina Bahari Pak Slamet', 'Lobster Air Laut',        180000, 'Tangkapan Segar', 10, 'https://images.unsplash.com/photo-1553247407-23251ce81f30?auto=format&fit=crop&q=80&w=400', 'kg'),
-  ('Mina Bahari Pak Slamet', 'Kerang Dara Segar',       28000,  'Tangkapan Segar', 50, 'https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&q=80&w=400', 'kg')
+  ('Mina Bahari Pak Slamet', 'Kerang Dara Segar',       28000,  'Tangkapan Segar', 50, 'https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&q=80&w=400', 'kg'),
+  ('Kios Hasil Laut Berkah', 'Ikan Baronang Segar', 65000, 'Tangkapan Segar', 15, 'https://images.unsplash.com/photo-1517409217646-b816ba7dce95?auto=format&fit=crop&q=80&w=400', 'kg'),
+  ('Kios Hasil Laut Berkah', 'Cumi Jarum', 45000, 'Tangkapan Segar', 30, 'https://images.unsplash.com/photo-1559868725-b467ec6a6d0c?auto=format&fit=crop&q=80&w=400', 'kg'),
+  ('Dapur Olahan Laut Ibu Siti', 'Kepiting Soka Krispi', 55000, 'Olahan', 40, 'https://images.unsplash.com/photo-1569385210018-127685f22b5a?auto=format&fit=crop&q=80&w=400', 'bungkus'),
+  ('Dapur Olahan Laut Ibu Siti', 'Terasi Udang Rebon', 28000, 'Olahan', 60, 'https://images.unsplash.com/photo-1621317762692-0f04f2f53472?auto=format&fit=crop&q=80&w=400', 'bungkus'),
+  ('Mina Bahari Pak Slamet', 'Udang Ronggeng', 120000, 'Tangkapan Segar', 25, 'https://images.unsplash.com/photo-1553247407-23251ce81f30?auto=format&fit=crop&q=80&w=400', 'kg'),
+  ('Kios Hasil Laut Berkah', 'Ikan Kerapu Hitam', 105000, 'Tangkapan Segar', 10, 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=400', 'kg'),
+  ('UMKM Kerupuk & Ikan Asin Bu Ratna', 'Kerupuk Kulit Ikan', 22000, 'Olahan', 80, 'https://images.unsplash.com/photo-1600628421055-4d30de868b8f?auto=format&fit=crop&q=80&w=400', 'bungkus')
 ) AS p(store_name, name, price, category, stock, image, unit)
 JOIN public.stores s ON s.store_name = p.store_name
 WHERE NOT EXISTS (

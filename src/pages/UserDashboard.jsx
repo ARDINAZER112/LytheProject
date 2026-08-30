@@ -169,6 +169,79 @@ export function UserDashboard() {
     <div className="container mx-auto px-4 py-8 animate-fade-in space-y-8">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
+      {/* ── Dashboard Welcome Header ── */}
+      <div className="bg-gradient-to-r from-ocean-900 via-ocean-800 to-ocean-700 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-8">
+          <Building2 className="w-64 h-64 text-white" />
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="bg-sand-500/30 text-sand-300 text-xs font-semibold px-3 py-1 rounded-full border border-sand-400/30 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-sand-400" />
+              Pasar Nelayan &amp; UMKM Pesisir
+            </span>
+            {user?.role === 'seller' && (
+              <span className="bg-amber-500/20 text-amber-300 text-xs font-semibold px-3 py-1 rounded-full border border-amber-400/30">
+                Penjual Terverifikasi
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl md:text-4xl font-extrabold mb-2 tracking-tight">
+            Dashboard Pasar JaringLokal
+          </h1>
+          <p className="text-ocean-200 text-sm md:text-base max-w-2xl leading-relaxed">
+            Selamat datang, <span className="text-sand-300 font-semibold">{user?.name || 'Pengguna'}</span>! Akses produk hasil laut segar &amp; olahan langsung dari daftar toko nelayan pesisir.
+          </p>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mt-6 pt-6 border-t border-ocean-700/60 max-w-3xl">
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+              <div className="text-xs text-ocean-200 font-medium mb-1">Item di Keranjang</div>
+              <div className="text-xl font-bold text-white flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-sand-400" />
+                {cartCount} Produk
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+              <div className="text-xs text-ocean-200 font-medium mb-1">Pesanan Saya</div>
+              <div className="text-xl font-bold text-white flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-sand-400" />
+                {myOrders.length} Pesanan
+              </div>
+            </div>
+            <Link
+              to="/support"
+              className="bg-white/10 hover:bg-white/20 transition-all rounded-2xl p-3.5 border border-white/10 flex flex-col justify-center"
+            >
+              <div className="text-xs text-ocean-200 font-medium mb-1">Dukungan Dashboard</div>
+              <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
+                <LifeBuoy className="h-4 w-4 text-sand-400" />
+                Tiket Support →
+              </div>
+            </Link>
+            {user?.role === 'seller' ? (
+              <Link
+                to="/seller/dashboard"
+                className="bg-sand-500 hover:bg-sand-400 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all shadow-md group"
+              >
+                <span>Kelola Toko Saya</span>
+                <span className="flex items-center gap-1 text-[11px] text-sand-100 font-normal mt-0.5 group-hover:translate-x-0.5 transition-transform">
+                  Dashboard <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            ) : (
+              <Link
+                to="/register-seller"
+                className="bg-white/15 hover:bg-white/25 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all border border-white/20"
+              >
+                <span>Buka Toko Nelayan</span>
+                <span className="text-[10px] text-ocean-200 font-normal mt-0.5">Daftar Penjual</span>
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── Marketplace Section & Controls ── */}
       <div id="marketplace-catalog">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -344,79 +417,6 @@ export function UserDashboard() {
         )}
       </div>
 
-
-      {/* ── Dashboard Welcome Header ── */}
-      <div className="bg-gradient-to-r from-ocean-900 via-ocean-800 to-ocean-700 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-8">
-          <Building2 className="w-64 h-64 text-white" />
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="bg-sand-500/30 text-sand-300 text-xs font-semibold px-3 py-1 rounded-full border border-sand-400/30 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-sand-400" />
-              Pasar Nelayan &amp; UMKM Pesisir
-            </span>
-            {user?.role === 'seller' && (
-              <span className="bg-amber-500/20 text-amber-300 text-xs font-semibold px-3 py-1 rounded-full border border-amber-400/30">
-                Penjual Terverifikasi
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl md:text-4xl font-extrabold mb-2 tracking-tight">
-            Dashboard Pasar JaringLokal
-          </h1>
-          <p className="text-ocean-200 text-sm md:text-base max-w-2xl leading-relaxed">
-            Selamat datang, <span className="text-sand-300 font-semibold">{user?.name || 'Pengguna'}</span>! Akses produk hasil laut segar &amp; olahan langsung dari daftar toko nelayan pesisir.
-          </p>
-
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 mt-6 pt-6 border-t border-ocean-700/60 max-w-3xl">
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
-              <div className="text-xs text-ocean-200 font-medium mb-1">Item di Keranjang</div>
-              <div className="text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-sand-400" />
-                {cartCount} Produk
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
-              <div className="text-xs text-ocean-200 font-medium mb-1">Pesanan Saya</div>
-              <div className="text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-sand-400" />
-                {myOrders.length} Pesanan
-              </div>
-            </div>
-            <Link
-              to="/support"
-              className="bg-white/10 hover:bg-white/20 transition-all rounded-2xl p-3.5 border border-white/10 flex flex-col justify-center"
-            >
-              <div className="text-xs text-ocean-200 font-medium mb-1">Dukungan Dashboard</div>
-              <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
-                <LifeBuoy className="h-4 w-4 text-sand-400" />
-                Tiket Support →
-              </div>
-            </Link>
-            {user?.role === 'seller' ? (
-              <Link
-                to="/seller/dashboard"
-                className="bg-sand-500 hover:bg-sand-400 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all shadow-md group"
-              >
-                <span>Kelola Toko Saya</span>
-                <span className="flex items-center gap-1 text-[11px] text-sand-100 font-normal mt-0.5 group-hover:translate-x-0.5 transition-transform">
-                  Dashboard <ArrowRight className="h-3 w-3" />
-                </span>
-              </Link>
-            ) : (
-              <Link
-                to="/register-seller"
-                className="bg-white/15 hover:bg-white/25 text-white rounded-2xl p-3.5 font-semibold text-xs flex flex-col justify-center items-center transition-all border border-white/20"
-              >
-                <span>Buka Toko Nelayan</span>
-                <span className="text-[10px] text-ocean-200 font-normal mt-0.5">Daftar Penjual</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ── MY ESCROW ORDERS SECTION ── */}
       {myOrders.length > 0 && (

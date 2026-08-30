@@ -14,6 +14,7 @@
     "@marsidev/react-turnstile": "^1.6.0",
     "@supabase/supabase-js": "^2.112.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "lucide-react": "^1.28.0",
     "pg": "^8.22.0",
     "qrcode.react": "^4.2.0",

@@ -159,6 +159,23 @@ export function Login() {
                 ) : 'Masuk'}
               </Button>
 
+              {/* Fitur Demo */}
+              <div className="mt-4 p-4 bg-ocean-50 rounded-xl border border-ocean-100">
+                <div className="text-xs font-semibold text-ocean-700 mb-2 flex items-center justify-between">
+                  <span>Fitur Demo (Otomatis Isi)</span>
+                  <span className="bg-sand-100 text-sand-700 px-2 py-0.5 rounded-full text-[10px]">Untuk Juri</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { setEmail('admin@jaringlokal.com'); setPassword('Admin@123'); }} className="text-xs py-1.5 px-2 bg-white border border-ocean-200 rounded text-ocean-700 hover:bg-ocean-100 transition-colors text-left">
+                    <span className="block font-bold">Akun Admin</span>
+                    <span className="block text-ocean-500 truncate">admin@jaringlokal.com</span>
+                  </button>
+                  <button type="button" onClick={() => { setEmail('bambang@jaringlokal.com'); setPassword('Seller@123'); }} className="text-xs py-1.5 px-2 bg-white border border-ocean-200 rounded text-ocean-700 hover:bg-ocean-100 transition-colors text-left">
+                    <span className="block font-bold">Akun Seller</span>
+                    <span className="block text-ocean-500 truncate">bambang@jaringlokal.com</span>
+                  </button>
+                </div>
+              </div>
 
             </form>
 

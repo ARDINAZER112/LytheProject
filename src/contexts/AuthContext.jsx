@@ -5,10 +5,12 @@ import { logActivity } from '../lib/activityLogger';
 const AuthContext = createContext();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: ambil profil user dari public.users berdasarkan auth.users id
+// Helper: ambil profil user dari public.users, fallback ke auth metadata
 // ─────────────────────────────────────────────────────────────────────────────
-async function fetchProfile(authUserId) {
+async function fetchProfile(authUser) {
+  const authUserId = typeof authUser === 'string' ? authUser : authUser?.id;
   if (!authUserId) return null;
+
   const { data, error } = await supabase
     .from('users')
     .select('id, name, email, phone, role')
@@ -17,9 +19,18 @@ async function fetchProfile(authUserId) {
 
   if (error) {
     console.warn('[AuthContext] fetchProfile error:', error.message);
-    return null;
   }
-  return data;
+
+  // Jika berhasil ambil dari DB dan name ada, kembalikan langsung
+  if (data?.name) return data;
+
+  // Fallback: ambil name dari auth user_metadata (misal dari Google OAuth atau register)
+  const metaName = (typeof authUser === 'object' && authUser?.user_metadata?.name) || null;
+  const metaEmail = (typeof authUser === 'object' && authUser?.email) || null;
+  if (data) {
+    return { ...data, name: data.name || metaName || metaEmail?.split('@')[0] || 'Pengguna' };
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,8 +45,8 @@ export const AuthProvider = ({ children }) => {
     // Ambil session awal
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile || { id: session.user.id, email: session.user.email, role: 'customer' });
+        const profile = await fetchProfile(session.user);
+        setUser(profile || { id: session.user.id, email: session.user.email, name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Pengguna', role: 'customer' });
       } else {
         setUser(null);
       }
@@ -47,8 +58,8 @@ export const AuthProvider = ({ children }) => {
       async (event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user) {
-            const profile = await fetchProfile(session.user.id);
-            setUser(profile || { id: session.user.id, email: session.user.email, role: 'customer' });
+            const profile = await fetchProfile(session.user);
+            setUser(profile || { id: session.user.id, email: session.user.email, name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Pengguna', role: 'customer' });
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
