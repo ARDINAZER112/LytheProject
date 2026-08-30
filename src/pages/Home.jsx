@@ -253,7 +253,7 @@ export function Home() {
                     </div>
                     <div>
                       <div className="text-xs text-ocean-300">Email Resmi Admin</div>
-                      <div className="font-bold text-white">bantuan@jaringlokal.id</div>
+                      <div className="font-bold text-white">ardianyahandre90@gmail.com</div>
                     </div>
                   </div>
 
