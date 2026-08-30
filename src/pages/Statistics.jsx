@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu'];
+const EMPTY_ARRAY = [];
 
 export function Statistics() {
   const { products = [], stores = [], orders = [], userLogs = [] } = useData();
@@ -34,10 +35,10 @@ export function Statistics() {
     type: 'product',
   });
 
-  const safeProducts = products || [];
-  const safeStores   = stores || [];
-  const safeOrders   = orders || [];
-  const safeLogs     = userLogs || [];
+  const safeProducts = products || EMPTY_ARRAY;
+  const safeStores   = stores || EMPTY_ARRAY;
+  const safeOrders   = orders || EMPTY_ARRAY;
+  const safeLogs     = userLogs || EMPTY_ARRAY;
 
   // ── 1. MONTHLY AGGREGATION FROM LIVE ORDERS (June & July set to 0 if no orders exist) ──
   const monthlyData = useMemo(() => {
@@ -101,7 +102,7 @@ export function Statistics() {
     return {
       mobile: Math.round((mobile / total) * 100),
       desktop: Math.round((desktop / total) * 100),
-      tablet: Math.max(0, 100 - Math.round((mobile / total) * 100) - Math.round((desktop / total) * 100)),
+      tablet: Math.round((tablet / total) * 100),
     };
   }, [safeLogs]);
 

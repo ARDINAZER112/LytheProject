@@ -332,7 +332,7 @@ export const DataProvider = ({ children }) => {
         updateUserRole('customer');
       }
     }
-  }, [user?.id, user?.role, stores]);
+  }, [user, stores, updateUserRole]);
 
   // ── Store Registration & Management ────────────────────────
   const registerStore = async (storeDetails) => {
