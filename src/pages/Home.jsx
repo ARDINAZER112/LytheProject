@@ -242,8 +242,8 @@ export function Home() {
                       <Phone className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-xs text-ocean-300">Hotline / WhatsApp</div>
-                      <div className="font-bold text-white">+62 812-3456-7890</div>
+                      <div className="text-xs text-ocean-300">WhatsApp</div>
+                      <div className="font-bold text-white">+62 852-3699-5741</div>
                     </div>
                   </div>
 
@@ -287,7 +287,7 @@ export function Home() {
                   
                   <div className="space-y-3">
                     <a
-                      href="https://wa.me/6281234567890?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan."
+                      href="https://wa.me/6285236995741?text=Halo%20Admin%20JaringLokal,%20saya%20butuh%20bantuan."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
