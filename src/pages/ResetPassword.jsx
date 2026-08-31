@@ -20,6 +20,16 @@ export function ResetPassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Jika Supabase mengarahkan balik dengan error di hash URL
+    // (mis. link sudah kedaluwarsa / sudah pernah dipakai), langsung
+    // tampilkan pesan yang sesuai tanpa perlu menunggu timeout.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const hashError = hashParams.get('error') || hashParams.get('error_code');
+    if (hashError) {
+      setStatus('invalid');
+      return;
+    }
+
     // Ketika user klik link reset di email, Supabase mendeteksi recovery token
     // di URL dan menembakkan event PASSWORD_RECOVERY.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -98,7 +108,8 @@ export function ResetPassword() {
               </div>
               <h2 className="text-2xl font-bold text-ocean-900 mb-1">Link Tidak Valid</h2>
               <p className="text-ocean-500 text-sm mb-8">
-                Link reset kata sandi ini tidak valid atau sudah kedaluwarsa. Silakan minta link baru.
+                Link reset kata sandi ini sudah kedaluwarsa atau sudah pernah digunakan sebelumnya.
+                Link hanya berlaku sekali pakai dan dalam waktu terbatas. Silakan minta link baru.
               </p>
               <Link to="/forgot-password">
                 <Button className="w-full h-12 text-base">Minta Link Reset Baru</Button>

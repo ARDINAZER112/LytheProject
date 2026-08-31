@@ -168,6 +168,12 @@ export function SellerDashboard() {
   }
 
   const totalStock = sellerProducts.reduce((acc, p) => acc + (p.stock || 0), 0);
+  const totalRevenue = incomingOrders
+    .filter(o => o.status === 'Selesai' || o.status === 'Pesanan Dikirim')
+    .reduce((sum, o) => sum + Number(o.total_amount || o.totalAmount || 0), 0);
+  const activeOrdersCount = incomingOrders.filter(o =>
+    o.status !== 'Selesai' && o.status !== 'Dibatalkan' && o.status !== 'Dibatalkan (Refund)'
+  ).length;
 
   return (
     <div className="container mx-auto px-4 py-10 space-y-8 animate-fade-in">
@@ -238,6 +244,34 @@ export function SellerDashboard() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ── KPI Metric Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: 'Total Pendapatan', value: `Rp ${totalRevenue.toLocaleString('id-ID')}`,
+            sub: 'Pesanan selesai & dikirim', color: 'bg-emerald-50 border-emerald-200', textColor: 'text-emerald-700', valColor: 'text-emerald-900',
+          },
+          {
+            label: 'Pesanan Aktif', value: activeOrdersCount,
+            sub: `Dari ${incomingOrders.length} total pesanan`, color: 'bg-blue-50 border-blue-200', textColor: 'text-blue-700', valColor: 'text-blue-900',
+          },
+          {
+            label: 'Produk di Katalog', value: sellerProducts.length,
+            sub: 'Aktif tersedia di marketplace', color: 'bg-ocean-50 border-ocean-200', textColor: 'text-ocean-600', valColor: 'text-ocean-900',
+          },
+          {
+            label: 'Total Stok', value: `${totalStock.toLocaleString('id-ID')} unit`,
+            sub: 'Keseluruhan satuan tersedia', color: 'bg-sand-50 border-sand-200', textColor: 'text-sand-700', valColor: 'text-sand-900',
+          },
+        ].map(({ label, value, sub, color, textColor, valColor }) => (
+          <div key={label} className={`rounded-2xl border p-4 ${color}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${textColor}`}>{label}</p>
+            <p className={`text-2xl font-extrabold mt-1 ${valColor}`}>{value}</p>
+            <p className={`text-xs mt-1 ${textColor} opacity-75`}>{sub}</p>
+          </div>
+        ))}
       </div>
 
       {/* ── INCOMING ESCROW ORDERS SECTION ── */}

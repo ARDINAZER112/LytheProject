@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { DollarSign, ShoppingBag, Package, AlertTriangle, Plus, ClipboardList, TrendingUp, ArrowLeft } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, AlertTriangle, Plus, ClipboardList, TrendingUp, ArrowLeft, Store } from 'lucide-react';
 
 // Status badge config
 const statusBadge = {
@@ -22,7 +22,7 @@ function getLast7Days(orders) {
     const key = d.toLocaleDateString('id-ID', { weekday: 'short' });
     const dateStr = d.toISOString().split('T')[0];
     const rev = safeOrders
-      .filter(o => o?.date && typeof o.date === 'string' && o.date.startsWith(dateStr) && (o.status === 'Selesai' || o.status === 'Dikirim'))
+      .filter(o => o?.date && typeof o.date === 'string' && o.date.startsWith(dateStr) && (o.status === 'Selesai' || o.status === 'Pesanan Dikirim'))
       .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
     days.push({ key, rev });
   }
@@ -30,12 +30,14 @@ function getLast7Days(orders) {
 }
 
 export function Dashboard() {
-  const { orders = [], products = [] } = useData();
+  const { orders = [], products = [], stores = [] } = useData();
 
   const safeOrders   = orders || [];
   const safeProducts = products || [];
+  const safeStores   = stores || [];
+  const approvedStores = safeStores.filter(s => s.status === 'approved').length;
 
-  const totalRevenue   = safeOrders.filter(o => o.status === 'Selesai' || o.status === 'Dikirim').reduce((s, o) => s + (o.totalAmount || 0), 0);
+  const totalRevenue   = safeOrders.filter(o => o.status === 'Selesai' || o.status === 'Pesanan Dikirim').reduce((s, o) => s + (o.totalAmount || 0), 0);
   const activeOrders   = safeOrders.filter(o => o.status !== 'Selesai' && o.status !== 'Dibatalkan').length;
   const totalOrders    = safeOrders.length;
   const lowStock       = safeProducts.filter(p => p.stock < 10).length;
@@ -100,14 +102,14 @@ export function Dashboard() {
             sub: `Dari total ${totalOrders} pesanan`, iconColor: 'text-blue-500', bg: 'bg-blue-50',
           },
           {
-            title: 'Total Produk', icon: Package,
-            value: products.length,
-            sub: 'Dalam katalog JaringLokal', iconColor: 'text-ocean-500', bg: 'bg-ocean-50',
+            title: 'Toko Mitra Aktif', icon: Store,
+            value: approvedStores,
+            sub: `Dari ${safeStores.length} total toko terdaftar`, iconColor: 'text-ocean-500', bg: 'bg-ocean-50',
           },
           {
             title: 'Stok Rendah', icon: AlertTriangle,
             value: lowStock,
-            sub: 'Produk stok < 10 kg', iconColor: 'text-red-500', bg: 'bg-red-50',
+            sub: 'Produk dengan stok < 10', iconColor: 'text-red-500', bg: 'bg-red-50',
           },
         ].map(({ title, icon: Icon, value, sub, iconColor, bg }) => (
           <Card key={title} className="p-5">
@@ -204,17 +206,17 @@ export function Dashboard() {
               <div key={order.id} className="flex items-center justify-between py-3 border-b border-ocean-50 last:border-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm flex-shrink-0">
-                    {order.userName.charAt(0)}
+                    {(order.userName || order.user_name || 'P').charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-ocean-900 text-sm">{order.userName}</p>
+                    <p className="font-medium text-ocean-900 text-sm">{order.userName || order.user_name || 'Pembeli'}</p>
                     <p className="text-xs text-ocean-400">
-                      {new Date(order.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {order.items.length} item
+                      {new Date(order.date || order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {(order.items || []).length} item
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-ocean-900 text-sm">Rp {order.totalAmount.toLocaleString('id-ID')}</p>
+                  <p className="font-semibold text-ocean-900 text-sm">Rp {Number(order.totalAmount || order.total_amount || 0).toLocaleString('id-ID')}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge[order.status] || 'bg-gray-100 text-gray-700'}`}>
                     {order.status}
                   </span>

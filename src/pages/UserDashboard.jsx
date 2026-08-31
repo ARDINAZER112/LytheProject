@@ -160,7 +160,7 @@ export function UserDashboard() {
     }
     : null;
 
-  const myOrders = (orders || []).filter(o => 
+  const myOrders = (orders || []).filter(o =>
     (user?.id && (String(o.user_id) === String(user.id) || String(o.userId) === String(user.id))) ||
     (user?.name && (o.userName === user.name || o.user_name === user.name))
   );
@@ -209,16 +209,12 @@ export function UserDashboard() {
                 {myOrders.length} Pesanan
               </div>
             </div>
-            <Link
-              to="/support"
-              className="bg-white/10 hover:bg-white/20 transition-all rounded-2xl p-3.5 border border-white/10 flex flex-col justify-center"
-            >
-              <div className="text-xs text-ocean-200 font-medium mb-1">Dukungan Dashboard</div>
-              <div className="text-xs font-bold text-white flex items-center gap-1.5 mt-1">
-                <LifeBuoy className="h-4 w-4 text-sand-400" />
-                Tiket Support →
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+              <div className="text-xs text-ocean-200 font-medium mb-1">Total Nilai Belanja</div>
+              <div className="text-sm font-bold text-sand-300 flex items-center gap-1 mt-1">
+                Rp {myOrders.reduce((sum, o) => sum + Number(o.total_amount || o.totalAmount || 0), 0).toLocaleString('id-ID')}
               </div>
-            </Link>
+            </div>
             {user?.role === 'seller' ? (
               <Link
                 to="/seller/dashboard"
@@ -313,8 +309,8 @@ export function UserDashboard() {
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${filterCategory === cat
-                    ? 'bg-ocean-600 text-white shadow-sm font-semibold'
-                    : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100'
+                  ? 'bg-ocean-600 text-white shadow-sm font-semibold'
+                  : 'bg-ocean-50 text-ocean-700 hover:bg-ocean-100'
                   }`}
               >
                 {cat}
@@ -454,7 +450,6 @@ export function UserDashboard() {
                 <Link to={`/order-chat/${ord.id}`}>
                   <Button size="sm" className="w-full h-9 text-xs bg-ocean-600 hover:bg-ocean-700 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm">
                     <span>💬 Buka Chat Escrow 3 Pihak</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </div>
@@ -463,195 +458,120 @@ export function UserDashboard() {
         </div>
       )}
 
-      {/* ── STORE DIRECT SHOWCASE SECTION ── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-ocean-900 flex items-center gap-2">
-              <Store className="h-5 w-5 text-ocean-600" />
-              Fishermen &amp; Coastal Processors' Shops (Toko Nelayan &amp; Pengolah Pesisir)
-            </h2>
-            <p className="text-ocean-500 text-xs md:text-sm">Klik toko untuk langsung melihat produk yang ditawarkan.</p>
-          </div>
-          {selectedStore !== 'Semua Toko' && (
-            <button
-              onClick={() => setSelectedStore('Semua Toko')}
-              className="text-xs font-semibold text-ocean-600 hover:text-ocean-800 bg-ocean-100 hover:bg-ocean-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-            >
-              <X className="h-3.5 w-3.5" />
-              Tampilkan Semua Toko
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {approvedStores.map((st) => {
-            const isSelected = selectedStore === st.store_name;
-            const productCount = getProductCountForStore(st.store_name);
-
-            return (
-              <div
-                key={st.id}
-                onClick={() => handleSelectStore(st.store_name)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 ${isSelected
-                    ? 'bg-ocean-900 text-white border-ocean-900 shadow-md ring-2 ring-sand-400'
-                    : 'bg-white text-ocean-900 border-ocean-100 hover:border-ocean-300 hover:shadow-md'
-                  }`}
-              >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${isSelected ? 'bg-sand-500 text-white' : 'bg-ocean-100 text-ocean-700'
-                  }`}>
-                  <Store className="h-6 w-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-ocean-900'}`}>
-                      {st.store_name}
-                    </h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${isSelected ? 'bg-sand-400/30 text-sand-200' : 'bg-ocean-100 text-ocean-700'
-                      }`}>
-                      {productCount} Produk
-                    </span>
-                  </div>
-                  <p className={`text-xs mt-1 line-clamp-1 flex items-center gap-1 ${isSelected ? 'text-ocean-200' : 'text-ocean-500'}`}>
-                    <MapPin className="h-3 w-3 flex-shrink-0 text-sand-500" />
-                    {st.address || 'Tuban, Jawa Timur'}
-                  </p>
-                  <div className="mt-2.5 flex items-center justify-between">
-                    <span className={`text-[11px] font-semibold ${isSelected ? 'text-sand-300' : 'text-ocean-600'}`}>
-                      {isSelected ? '✓ Filter Aktif' : 'Lihat Produk Toko →'}
-                    </span>
-                    <button
-                      onClick={(e) => handleShareStoreQR(e, st.store_name, st.address)}
-                      className={`p-1.5 rounded-lg transition-colors ${isSelected
-                          ? 'bg-sand-400/20 text-sand-300 hover:bg-sand-400/40'
-                          : 'bg-ocean-50 text-ocean-600 hover:bg-ocean-100'
-                        }`}
-                      title="Bagikan Kode QR Toko"
-                    >
-                      <QrCode className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* ── Product Detail Modal ── */}
       {activeModalProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-ocean-100 animate-slide-up relative">
-            <button
-              onClick={() => setActiveModalProduct(null)}
-              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur text-ocean-700 flex items-center justify-center hover:bg-white transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-ocean-100 animate-slide-up relative">
+                          <button
+                            onClick={() => setActiveModalProduct(null)}
+                            className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur text-ocean-700 flex items-center justify-center hover:bg-white transition-colors"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
 
-            <div className="h-64 relative overflow-hidden bg-ocean-100">
-              <img
-                src={activeModalProduct.image}
-                alt={activeModalProduct.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4 bg-ocean-900/80 backdrop-blur text-white text-xs font-semibold px-3 py-1 rounded-full">
-                {activeModalProduct.category}
-              </div>
-            </div>
+                          <div className="h-64 relative overflow-hidden bg-ocean-100">
+                            <img
+                              src={activeModalProduct.image}
+                              alt={activeModalProduct.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-4 left-4 bg-ocean-900/80 backdrop-blur text-white text-xs font-semibold px-3 py-1 rounded-full">
+                              {activeModalProduct.category}
+                            </div>
+                          </div>
 
-            <div className="p-6 space-y-4">
-              {/* STORE INFO BADGE */}
-              <div className="bg-ocean-50 border border-ocean-100 p-3.5 rounded-2xl flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-ocean-600 text-white flex items-center justify-center flex-shrink-0">
-                    <Store className="h-5 w-5 text-sand-300" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-ocean-500 font-medium">Toko / UMKM Penyedia</div>
-                    <div className="text-sm font-bold text-ocean-900">{currentStoreInfo?.store_name}</div>
-                    <div className="text-xs text-ocean-600 mt-0.5">{currentStoreInfo?.address}</div>
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => handleShareStoreQR(e, currentStoreInfo?.store_name, currentStoreInfo?.address)}
-                  className="p-2 bg-white border border-ocean-200 rounded-xl hover:bg-ocean-100 text-ocean-700 transition-colors flex-shrink-0"
-                  title="Kode QR Toko"
-                >
-                  <QrCode className="h-4 w-4" />
-                </button>
-              </div>
+                          <div className="p-6 space-y-4">
+                            {/* STORE INFO BADGE */}
+                            <div className="bg-ocean-50 border border-ocean-100 p-3.5 rounded-2xl flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-ocean-600 text-white flex items-center justify-center flex-shrink-0">
+                                  <Store className="h-5 w-5 text-sand-300" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-ocean-500 font-medium">Toko / UMKM Penyedia</div>
+                                  <div className="text-sm font-bold text-ocean-900">{currentStoreInfo?.store_name}</div>
+                                  <div className="text-xs text-ocean-600 mt-0.5">{currentStoreInfo?.address}</div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => handleShareStoreQR(e, currentStoreInfo?.store_name, currentStoreInfo?.address)}
+                                className="p-2 bg-white border border-ocean-200 rounded-xl hover:bg-ocean-100 text-ocean-700 transition-colors flex-shrink-0"
+                                title="Kode QR Toko"
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </button>
+                            </div>
 
-              <div>
-                <h2 className="text-2xl font-bold text-ocean-900">{activeModalProduct.name}</h2>
-                <div className="text-2xl font-extrabold text-sand-600 mt-1">
-                  Rp {Number(activeModalProduct.price).toLocaleString('id-ID')}
-                  <span className="text-sm font-normal text-ocean-400"> / {activeModalProduct.unit || 'kg'}</span>
-                </div>
-              </div>
+                            <div>
+                              <h2 className="text-2xl font-bold text-ocean-900">{activeModalProduct.name}</h2>
+                              <div className="text-2xl font-extrabold text-sand-600 mt-1">
+                                Rp {Number(activeModalProduct.price).toLocaleString('id-ID')}
+                                <span className="text-sm font-normal text-ocean-400"> / {activeModalProduct.unit || 'kg'}</span>
+                              </div>
+                            </div>
 
-              <div className="flex items-center justify-between text-sm text-ocean-600 pt-2 border-t border-ocean-100">
-                <span>Status Stok:</span>
-                <span className="font-semibold text-ocean-900">
-                  {activeModalProduct.stock > 0 ? `${activeModalProduct.stock} ${activeModalProduct.unit || 'kg'} Tersedia` : 'Stok Habis'}
-                </span>
-              </div>
+                            <div className="flex items-center justify-between text-sm text-ocean-600 pt-2 border-t border-ocean-100">
+                              <span>Status Stok:</span>
+                              <span className="font-semibold text-ocean-900">
+                                {activeModalProduct.stock > 0 ? `${activeModalProduct.stock} ${activeModalProduct.unit || 'kg'} Tersedia` : 'Stok Habis'}
+                              </span>
+                            </div>
 
-              {/* Quantity selector */}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-sm font-medium text-ocean-700">Jumlah Pesanan:</span>
-                <div className="flex items-center gap-3 bg-ocean-50 p-1.5 rounded-xl border border-ocean-200">
-                  <button
-                    onClick={() => setModalQty(q => Math.max(1, q - 1))}
-                    className="w-8 h-8 rounded-lg bg-white text-ocean-700 flex items-center justify-center hover:bg-ocean-100 font-bold border border-ocean-200 shadow-sm"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="font-bold text-ocean-900 w-8 text-center">{modalQty}</span>
-                  <button
-                    onClick={() => setModalQty(q => Math.min(activeModalProduct.stock, q + 1))}
-                    className="w-8 h-8 rounded-lg bg-white text-ocean-700 flex items-center justify-center hover:bg-ocean-100 font-bold border border-ocean-200 shadow-sm"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
+                            {/* Quantity selector */}
+                            <div className="flex items-center justify-between pt-2">
+                              <span className="text-sm font-medium text-ocean-700">Jumlah Pesanan:</span>
+                              <div className="flex items-center gap-3 bg-ocean-50 p-1.5 rounded-xl border border-ocean-200">
+                                <button
+                                  onClick={() => setModalQty(q => Math.max(1, q - 1))}
+                                  className="w-8 h-8 rounded-lg bg-white text-ocean-700 flex items-center justify-center hover:bg-ocean-100 font-bold border border-ocean-200 shadow-sm"
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="font-bold text-ocean-900 w-8 text-center">{modalQty}</span>
+                                <button
+                                  onClick={() => setModalQty(q => Math.min(activeModalProduct.stock, q + 1))}
+                                  className="w-8 h-8 rounded-lg bg-white text-ocean-700 flex items-center justify-center hover:bg-ocean-100 font-bold border border-ocean-200 shadow-sm"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
 
-              {/* Add to cart & QR action buttons */}
-              <div className="flex gap-2.5 pt-2">
-                <Button
-                  onClick={() => {
-                    handleAddToCart(activeModalProduct, modalQty);
-                    setActiveModalProduct(null);
-                  }}
-                  disabled={activeModalProduct.stock <= 0}
-                  className="flex-1 h-12 text-base font-semibold"
-                >
-                  <ShoppingCart className="mr-2 h-5 w-5" />
-                  Tambah {modalQty} ke Keranjang
-                </Button>
-                <button
-                  onClick={(e) => handleShareProductQR(e, activeModalProduct)}
-                  className="p-3 bg-sand-100 hover:bg-sand-200 text-sand-800 border border-sand-300 rounded-xl transition-colors flex items-center justify-center"
-                  title="Bagikan Kode QR Produk"
-                >
-                  <QrCode className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                            {/* Add to cart & QR action buttons */}
+                            <div className="flex gap-2.5 pt-2">
+                              <Button
+                                onClick={() => {
+                                  handleAddToCart(activeModalProduct, modalQty);
+                                  setActiveModalProduct(null);
+                                }}
+                                disabled={activeModalProduct.stock <= 0}
+                                className="flex-1 h-12 text-base font-semibold"
+                              >
+                                <ShoppingCart className="mr-2 h-5 w-5" />
+                                Tambah {modalQty} ke Keranjang
+                              </Button>
+                              <button
+                                onClick={(e) => handleShareProductQR(e, activeModalProduct)}
+                                className="p-3 bg-sand-100 hover:bg-sand-200 text-sand-800 border border-sand-300 rounded-xl transition-colors flex items-center justify-center"
+                                title="Bagikan Kode QR Produk"
+                              >
+                                <QrCode className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-      {/* ── Global QR Code Modal ── */}
-      <QRCodeModal
-        isOpen={qrModalConfig.isOpen}
-        onClose={() => setQrModalConfig(prev => ({ ...prev, isOpen: false }))}
-        title={qrModalConfig.title}
-        subtitle={qrModalConfig.subtitle}
-        value={qrModalConfig.value}
-        type={qrModalConfig.type}
-      />
+                    {/* ── Global QR Code Modal ── */}
+                    <QRCodeModal
+                      isOpen={qrModalConfig.isOpen}
+                      onClose={() => setQrModalConfig(prev => ({ ...prev, isOpen: false }))}
+                      title={qrModalConfig.title}
+                      subtitle={qrModalConfig.subtitle}
+                      value={qrModalConfig.value}
+                      type={qrModalConfig.type}
+                    />
     </div>
   );
 }
